@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       TBT Access
  * Description:       One sign-in page and one set of redirects for The Blue Tree. Replaces the theme's legacy login code at runtime.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            TBT
@@ -12,7 +12,11 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TBT_ACCESS_VERSION', '0.1.0' );
+define( 'TBT_ACCESS_VERSION', '0.2.0' );
+define( 'TBT_ACCESS_DIR', plugin_dir_path( __FILE__ ) );
+define( 'TBT_ACCESS_URL', plugin_dir_url( __FILE__ ) );
+
+require_once TBT_ACCESS_DIR . 'includes/account-screens.php';
 
 /*
  * Rules this file implements:
@@ -20,7 +24,9 @@ define( 'TBT_ACCESS_VERSION', '0.1.0' );
  *   - The only sign-in page is WooCommerce's /my-account/.
  *   - After sign-in: back to where the person started if that URL is safe,
  *     otherwise administrators go to wp-admin and everyone else to /vip/.
- *   - After sign-out: /do-zobaczenia/.
+ *   - After sign-out: the sign-in screen with a "Wylogowano." banner.
+ *   - Signed-out account screens are TBT-styled and in Polish
+ *     (includes/account-screens.php).
  *
  * The theme's functions.php is never edited. Its legacy login code is unhooked
  * at runtime, so deactivating this plugin restores the old behaviour exactly.
@@ -597,7 +603,7 @@ function tbt_access_enqueue_button_style() {
 }
 
 /* -------------------------------------------------------------------------
- * T9 — Sign-out destination
+ * Sign-out destination (0.2.0: the sign-in screen with a banner)
  * ---------------------------------------------------------------------- */
 
 add_filter( 'logout_redirect', 'tbt_access_logout_destination', 999 );
@@ -611,12 +617,13 @@ add_filter( 'logout_redirect', 'tbt_access_logout_destination', 999 );
 add_filter( 'woocommerce_logout_default_redirect_url', 'tbt_access_logout_destination', 999 );
 
 /**
- * Where everyone goes after signing out.
+ * Where everyone goes after signing out: the sign-in screen, which shows the
+ * "Wylogowano." banner when it sees tbt_signed_out=1.
  *
  * @return string
  */
 function tbt_access_logout_destination() {
-	return home_url( '/do-zobaczenia/' );
+	return add_query_arg( 'tbt_signed_out', '1', tbt_access_account_url() );
 }
 
 /* -------------------------------------------------------------------------
