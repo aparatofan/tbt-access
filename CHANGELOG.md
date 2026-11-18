@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 — 2026-11-18
+
+- **The signed-out account screens hide the Divi header's navigation** (menu, cart, search, mobile menu), so sign in, forgot password and set new password are distraction-free. The logo stays and links home. Signed-in My account and every other page keep the full menu.
+
 ## 0.2.0 — 2026-11-18
 
 TBT-style sign-in screens, in Polish.
