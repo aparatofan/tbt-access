@@ -534,6 +534,12 @@ function tbt_access_enqueue_account_assets() {
 		tbt_access_asset_version( 'assets/tbt-access.css' )
 	);
 
+	// The one deliberate rule outside .tbt-access: hide the Divi header's
+	// navigation (menu, cart, search, mobile menu) so the sign-in screens are
+	// distraction-free. The logo stays and still links home. Inline so it
+	// only ever exists on these screens.
+	wp_add_inline_style( 'tbt-access-screens', '#main-header #et-top-navigation{display:none!important}' );
+
 	$script_deps = array();
 
 	if ( tbt_access_is_lost_password_screen() ) {
