@@ -1,0 +1,667 @@
+/* ==========================================================================
+   TBT Access — signed-out account screens (sign in, forgot, check email,
+   set new password). Loaded only on those screens.
+
+   Everything is scoped under .tbt-access. Colours read TBT Hub tokens
+   (tbt-tokens.css) with the Style Book values as literal fallbacks, so the
+   screens still render when Hub is inactive. Where the design canvas and Hub
+   differ (ink, muted), Hub wins.
+
+   Selectors are class-on-class (0,2,0 or more) so Divi's element rules
+   (input[type=text], h1–h6 padding, p padding) and WooCommerce's
+   `.woocommerce form …` rules do not leak in.
+   ========================================================================== */
+
+.tbt-access {
+	--tbt-access-blue:       var(--tbt-blue, #0856C9);
+	--tbt-access-blue-dark:  var(--tbt-blue-dark, #063F94);
+	--tbt-access-canvas:     var(--tbt-canvas, #F6F8FC);
+	--tbt-access-surface:    var(--tbt-surface, #FFFFFF);
+	--tbt-access-input:      var(--tbt-input, #F0F5FE);
+	--tbt-access-border:     var(--tbt-border, #D8E3F0);
+	--tbt-access-ink:        var(--tbt-ink, #1F2937);
+	--tbt-access-muted:      var(--tbt-muted, #667085);
+	--tbt-access-error:      var(--tbt-error, #C62828);
+	--tbt-access-error-bg:   var(--tbt-error-bg, #FFF1F1);
+	--tbt-access-success:    var(--tbt-success, #16803C);
+	--tbt-access-success-bg: var(--tbt-success-bg, #ECFDF3);
+	--tbt-access-info-bg:    var(--tbt-selected-bg, #EDF4FF);
+	--tbt-access-focus:      var(--tbt-focus-ring, 0 0 0 3px rgba(8, 86, 201, .18));
+	--tbt-access-radius:     var(--tbt-radius-control, 12px);
+	--tbt-access-font-ui:       var(--tbt-font-ui, "Roboto", sans-serif);
+	--tbt-access-font-content:  var(--tbt-font-content, "Roboto Slab", Georgia, serif);
+	--tbt-access-font-identity: var(--tbt-font-identity, "Roboto Mono", ui-monospace, monospace);
+
+	box-sizing: border-box;
+	width: 100%;
+	padding: 64px 24px;
+	background: var(--tbt-access-canvas);
+	color: var(--tbt-access-ink);
+	font-family: var(--tbt-access-font-ui);
+	font-size: 16px;
+	line-height: 1.5;
+}
+
+.tbt-access *,
+.tbt-access *::before,
+.tbt-access *::after {
+	box-sizing: border-box;
+}
+
+/* WooCommerce's shortcode wrapper. */
+.tbt-access .woocommerce {
+	margin: 0;
+	padding: 0;
+}
+
+/* Divi pads every heading and paragraph; these screens set their own rhythm. */
+.tbt-access .tbt-access__panel h1,
+.tbt-access .tbt-access__panel h2,
+.tbt-access .tbt-access__panel p {
+	margin: 0;
+	padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Panel: hero left, form right
+   -------------------------------------------------------------------------- */
+
+.tbt-access .tbt-access__panel {
+	display: grid;
+	grid-template-columns: minmax(0, 47fr) minmax(0, 53fr);
+	max-width: 1040px;
+	margin: 0 auto;
+	overflow: hidden;
+	background: var(--tbt-access-surface);
+	border: 1px solid var(--tbt-access-border);
+	border-radius: var(--tbt-radius-panel, 22px);
+	box-shadow: var(--tbt-shadow, 0 6px 20px rgba(24, 56, 96, .07));
+}
+
+/* --------------------------------------------------------------------------
+   Hero
+   -------------------------------------------------------------------------- */
+
+.tbt-access .tbt-access__hero {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 32px;
+	min-height: 100%;
+	padding: 56px 48px;
+	background: linear-gradient(160deg, var(--tbt-access-blue) 0%, var(--tbt-access-blue-dark) 100%);
+	color: #FFFFFF;
+}
+
+.tbt-access .tbt-access__hero-head {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.tbt-access .tbt-access__eyebrow {
+	font-family: var(--tbt-access-font-identity);
+	font-weight: 500;
+	font-size: 13px;
+	line-height: 1.4;
+	letter-spacing: .16em;
+	color: #FFFFFF;
+}
+
+.tbt-access .tbt-access__hero-title {
+	font-family: var(--tbt-access-font-identity);
+	font-weight: 700;
+	font-size: 44px;
+	line-height: 1.1;
+	letter-spacing: 0;
+	color: #FFFFFF;
+	text-transform: none;
+}
+
+.tbt-access .tbt-access__hero-line {
+	font-family: var(--tbt-access-font-content);
+	font-weight: 400;
+	font-size: 19px;
+	line-height: 1.5;
+	color: #FFFFFF;
+}
+
+.tbt-access .tbt-access__hero-list {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin: auto 0 0;
+	padding: 0 104px 0 0; /* clear of the tree */
+	list-style: none;
+}
+
+.tbt-access .tbt-access__hero-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	font-size: 16px;
+	line-height: 1.4;
+	color: #FFFFFF;
+	list-style: none;
+}
+
+.tbt-access .tbt-access__hero-mark {
+	flex: 0 0 auto;
+	color: #FFFFFF;
+}
+
+.tbt-access .tbt-access__hero-item--done span { opacity: .85; }
+.tbt-access .tbt-access__hero-item--current > span:last-child { font-weight: 600; }
+
+.tbt-access .tbt-access__step {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border: 2px solid #FFFFFF;
+	border-radius: 50%;
+	font-size: 13px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.tbt-access .tbt-access__hero-item--current .tbt-access__step {
+	border-color: #FFFFFF;
+	background: #FFFFFF;
+	color: var(--tbt-access-blue);
+	font-size: 14px;
+}
+
+.tbt-access .tbt-access__tree {
+	position: absolute;
+	right: 32px;
+	bottom: 28px;
+	width: 96px;
+	height: 84px;
+	max-width: none;
+	opacity: .9;
+	pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Form column
+   -------------------------------------------------------------------------- */
+
+.tbt-access .tbt-access__column {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	min-width: 0;
+	margin: 0;
+	padding: 56px 56px 48px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
+
+.tbt-access .tbt-access__intro {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.tbt-access .tbt-access__heading {
+	font-family: var(--tbt-access-font-content);
+	font-weight: 700;
+	font-size: 28px;
+	line-height: 1.2;
+	letter-spacing: -.01em;
+	color: var(--tbt-access-blue);
+	text-transform: none;
+}
+
+.tbt-access .tbt-access__lede {
+	font-size: 16px;
+	line-height: 1.5;
+	color: var(--tbt-access-muted);
+}
+
+.tbt-access .tbt-access__lede strong {
+	font-weight: 600;
+	color: var(--tbt-access-ink);
+	overflow-wrap: anywhere;
+}
+
+.tbt-access .tbt-access__fields {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.tbt-access .tbt-access__field {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.tbt-access .tbt-access__label {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--tbt-access-ink);
+}
+
+/* Fields ------------------------------------------------------------------ */
+
+.tbt-access .tbt-access__input {
+	display: block;
+	width: 100%;
+	height: 48px;
+	margin: 0;
+	padding: 0 14px;
+	border: 1px solid var(--tbt-access-border);
+	border-radius: var(--tbt-access-radius);
+	background: var(--tbt-access-input);
+	box-shadow: none;
+	color: var(--tbt-access-ink);
+	font-family: var(--tbt-access-font-ui);
+	font-size: 16px; /* 16px stops iOS zooming on focus */
+	line-height: normal;
+	transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+.tbt-access .tbt-access__input::placeholder {
+	color: var(--tbt-access-muted);
+	opacity: 1;
+}
+
+.tbt-access .tbt-access__input:focus {
+	border-color: var(--tbt-access-blue);
+	background: #FFFFFF;
+	box-shadow: var(--tbt-access-focus);
+	outline: none;
+}
+
+.tbt-access .tbt-access__input[aria-invalid="true"] {
+	border-color: var(--tbt-access-error);
+	background: #FFFFFF;
+	box-shadow: 0 0 0 3px rgba(198, 40, 40, .14);
+}
+
+.tbt-access .tbt-access__password {
+	position: relative;
+}
+
+.tbt-access .tbt-access__password .tbt-access__input {
+	padding-right: 52px;
+}
+
+.tbt-access .tbt-access__reveal {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 10px;
+	background: transparent;
+	color: var(--tbt-access-muted);
+	cursor: pointer;
+}
+
+.tbt-access .tbt-access__reveal:hover {
+	color: var(--tbt-access-blue);
+}
+
+.tbt-access .tbt-access__reveal:focus-visible {
+	box-shadow: var(--tbt-access-focus);
+	color: var(--tbt-access-blue);
+	outline: none;
+}
+
+.tbt-access .tbt-access__icon-hide { display: none; }
+.tbt-access .tbt-access__reveal[aria-pressed="true"] .tbt-access__icon-show { display: none; }
+.tbt-access .tbt-access__reveal[aria-pressed="true"] .tbt-access__icon-hide { display: block; }
+
+/* Remember me + forgot link ---------------------------------------------- */
+
+.tbt-access .tbt-access__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px 16px;
+}
+
+.tbt-access .tbt-access__check {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0;
+	font-size: 15px;
+	color: var(--tbt-access-ink);
+	cursor: pointer;
+}
+
+.tbt-access .tbt-access__check input {
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	accent-color: var(--tbt-access-blue);
+	appearance: auto;
+	-webkit-appearance: checkbox;
+	cursor: pointer;
+}
+
+.tbt-access .tbt-access__check input:focus-visible {
+	outline: 2px solid var(--tbt-access-blue);
+	outline-offset: 2px;
+}
+
+/* Links ------------------------------------------------------------------- */
+
+.tbt-access a.tbt-access__link {
+	color: var(--tbt-access-blue);
+	font-size: 15px;
+	font-weight: 500;
+	text-decoration: none;
+}
+
+.tbt-access a.tbt-access__link:hover {
+	color: var(--tbt-access-blue-dark);
+	text-decoration: underline;
+}
+
+.tbt-access a.tbt-access__link:focus-visible,
+.tbt-access .tbt-access__message a:focus-visible {
+	border-radius: 4px;
+	outline: 2px solid var(--tbt-access-blue);
+	outline-offset: 2px;
+}
+
+.tbt-access a.tbt-access__back {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	align-self: flex-start;
+}
+
+/* Buttons: 12px corners, sentence case, Roboto 600 (Style Book §7) -------- */
+
+.tbt-access .tbt-access__button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 48px;
+	margin: 0;
+	padding: 0 24px;
+	border: 1px solid transparent;
+	border-radius: var(--tbt-access-radius);
+	font-family: var(--tbt-access-font-ui);
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1;
+	letter-spacing: 0;
+	text-align: center;
+	text-decoration: none;
+	text-transform: none;
+	cursor: pointer;
+	transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.tbt-access .tbt-access__button--primary {
+	border-color: var(--tbt-access-blue);
+	background: var(--tbt-access-blue);
+	color: #FFFFFF;
+}
+
+.tbt-access .tbt-access__button--primary:hover {
+	border-color: var(--tbt-access-blue-dark);
+	background: var(--tbt-access-blue-dark);
+	color: #FFFFFF;
+	transform: translateY(-1px);
+}
+
+.tbt-access .tbt-access__button--secondary {
+	border-color: var(--tbt-access-border);
+	background: #FFFFFF;
+	color: var(--tbt-access-blue);
+}
+
+.tbt-access .tbt-access__button--secondary:hover {
+	border-color: var(--tbt-access-blue);
+	background: var(--tbt-access-info-bg);
+	color: var(--tbt-access-blue);
+	transform: translateY(-1px);
+}
+
+.tbt-access .tbt-access__button:focus-visible {
+	box-shadow: var(--tbt-access-focus);
+	outline: 2px solid var(--tbt-access-blue);
+	outline-offset: 2px;
+}
+
+.tbt-access .tbt-access__button:disabled,
+.tbt-access .tbt-access__button:disabled:hover {
+	border-color: var(--tbt-access-border);
+	background: var(--tbt-access-border);
+	color: var(--tbt-access-muted);
+	transform: none;
+	cursor: not-allowed;
+}
+
+/* Footer line under the form --------------------------------------------- */
+
+.tbt-access .tbt-access__footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding-top: 20px;
+	border-top: 1px solid var(--tbt-access-border);
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--tbt-access-muted);
+}
+
+.tbt-access p.tbt-access__footer {
+	padding-top: 20px;
+}
+
+/* Lost-password footer is a sentence, not a row. */
+.tbt-access .lost_reset_password .tbt-access__footer {
+	display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Messages
+   -------------------------------------------------------------------------- */
+
+.tbt-access .tbt-access__message {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 14px 16px;
+	border: 1px solid;
+	border-radius: var(--tbt-access-radius);
+	font-size: 15px;
+	line-height: 1.45;
+}
+
+/* WooCommerce 11's account-i18n.js moves focus to the first [role="alert"]
+   (tabindex -1) so screen readers announce it. Keep that, but a message is
+   not a control: no browser focus outline around it. */
+.tbt-access .tbt-access__message:focus {
+	outline: none;
+}
+
+.tbt-access .tbt-access__message .tbt-access__icon {
+	flex: 0 0 auto;
+	margin-top: 1px;
+}
+
+.tbt-access .tbt-access__message-body {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.tbt-access .tbt-access__message strong {
+	font-weight: 600;
+}
+
+.tbt-access .tbt-access__message a {
+	color: inherit;
+	font-weight: 600;
+	text-decoration: underline;
+}
+
+.tbt-access .tbt-access__message--error {
+	border-color: #F3C4C4;
+	background: var(--tbt-access-error-bg);
+	color: #B42323;
+}
+
+.tbt-access .tbt-access__message--info {
+	border-color: #C9DCF7;
+	background: var(--tbt-access-info-bg);
+	color: var(--tbt-access-blue-dark);
+}
+
+.tbt-access .tbt-access__message--success {
+	border-color: #BFE6CD;
+	background: var(--tbt-access-success-bg);
+	color: var(--tbt-access-success);
+}
+
+/* Check-your-email screen ------------------------------------------------ */
+
+.tbt-access .tbt-access__tile {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 56px;
+	height: 56px;
+	border-radius: var(--tbt-radius-card, 16px);
+	background: var(--tbt-access-success-bg);
+	color: var(--tbt-access-success);
+}
+
+.tbt-access .tbt-access__note {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 18px 20px;
+	border-radius: var(--tbt-radius-card, 16px);
+	background: var(--tbt-access-canvas);
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--tbt-access-ink);
+}
+
+.tbt-access .tbt-access__note strong {
+	font-weight: 600;
+}
+
+/* Strength meter ---------------------------------------------------------- */
+
+.tbt-access .tbt-access__strength {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.tbt-access .tbt-access__strength[hidden] {
+	display: none;
+}
+
+.tbt-access .tbt-access__bars {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 6px;
+}
+
+.tbt-access .tbt-access__bars span {
+	height: 6px;
+	border-radius: 3px;
+	background: var(--tbt-access-border);
+	transition: background-color .2s ease;
+}
+
+.tbt-access .tbt-access__strength-hint {
+	font-size: 14px;
+	line-height: 1.4;
+	color: var(--tbt-access-muted);
+}
+
+.tbt-access [data-level="weak"] .tbt-access__bars .is-on   { background: #C62828; }
+.tbt-access [data-level="weak"] .tbt-access__strength-hint { color: #B42323; }
+.tbt-access [data-level="medium"] .tbt-access__bars .is-on   { background: #D97706; }
+.tbt-access [data-level="medium"] .tbt-access__strength-hint { color: #8A4B05; }
+.tbt-access [data-level="strong"] .tbt-access__bars .is-on   { background: #16803C; }
+.tbt-access [data-level="strong"] .tbt-access__strength-hint { color: #16803C; }
+
+/* --------------------------------------------------------------------------
+   Narrow screens: hero on top. Students open reset links on phones.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 819px) {
+	.tbt-access {
+		padding: 24px 12px;
+	}
+
+	.tbt-access .tbt-access__panel {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.tbt-access .tbt-access__hero {
+		gap: 20px;
+		min-height: 0;
+		padding: 32px 24px;
+	}
+
+	.tbt-access .tbt-access__hero-title {
+		font-size: 34px;
+	}
+
+	.tbt-access .tbt-access__hero-line {
+		font-size: 17px;
+	}
+
+	.tbt-access .tbt-access__hero-list {
+		padding-right: 72px;
+	}
+
+	.tbt-access .tbt-access__tree {
+		right: 20px;
+		bottom: 20px;
+		width: 64px;
+		height: 56px;
+	}
+
+	.tbt-access .tbt-access__column {
+		gap: 20px;
+		padding: 32px 24px;
+	}
+
+	.tbt-access .tbt-access__heading {
+		font-size: 24px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tbt-access .tbt-access__button,
+	.tbt-access .tbt-access__input,
+	.tbt-access .tbt-access__bars span {
+		transition: none;
+	}
+
+	.tbt-access .tbt-access__button:hover {
+		transform: none;
+	}
+}
