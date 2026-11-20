@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.2 — 2026-11-20
+
+Close open sign-ups, keep checkout accounts. No database schema changes; one new user meta key, `tbt_access_created_via`. New file: `includes/signup-guard.php`.
+
+- **WordPress registration stays off.** `users_can_register` always reads as 0, and saving Settings → General always stores 0, so "Anyone can register" stays unticked and an old tick can't reopen registration later. A stored 1 from before 0.2.2 is reset to 0 on the next admin page load. Settings → General shows a "Registration is closed by TBT Access" notice to administrators.
+- **`/wp-login.php?action=register` goes to the Polish sign-in screen** (`/my-account/`, 302), instead of WordPress's form or its English "registration disabled" message. The "Register" link on `wp-login.php` is gone.
+- **My account registration is closed**, both the form and direct POSTs: `woocommerce_enable_myaccount_registration` reads as `no`, and `WC_Form_Handler::process_registration` (`wp_loaded`, 20) is removed at `init`. It never checks that option itself, in WooCommerce 5.5.4 and 11.3.0 alike.
+- **Checkout is not touched.** Classic checkout, block checkout, the 11.x order-received "create account" block, Subscriptions and Memberships purchases all keep creating accounts through `wc_create_new_customer()`. None of them reads `users_can_register` or uses `process_registration`. Users → Add New is not touched either.
+- **Every new account records where it came from** in `tbt_access_created_via`: `cli`, `checkout`, `rest`, `my-account`, `wp-login`, `admin` or `other:/path`, checked in that order. Checkout is checked before REST because block checkout is a Store API request. Checkout means: `WOOCOMMERCE_CHECKOUT` is defined (classic checkout sets it just before creating the account), a Store API `/wc/store/…/checkout` request, or a `create-account` post on the order-received page. This never blocks or breaks account creation.
+- **Users list: new "Created via" column** for administrators. Accounts created before 0.2.2 show "—".
+- **One switch for Phase 3:** the `tbt_access_open_signup` filter (default `false`). When it returns `true`, the three closures above step aside. Nothing turns it on in this release.
+
+After deploy: purge LiteSpeed's cache.
+
 ## 0.2.1 — 2026-11-18
 
 - **The signed-out account screens hide the Divi header's navigation** (menu, cart, search, mobile menu), so sign in, forgot password and set new password are distraction-free. The logo stays and links home. Signed-in My account and every other page keep the full menu.

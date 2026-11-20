@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       TBT Access
  * Description:       One sign-in page and one set of redirects for The Blue Tree. Replaces the theme's legacy login code at runtime.
- * Version:           0.2.1
+ * Version:           0.2.2
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            TBT
@@ -12,11 +12,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TBT_ACCESS_VERSION', '0.2.1' );
+define( 'TBT_ACCESS_VERSION', '0.2.2' );
 define( 'TBT_ACCESS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBT_ACCESS_URL', plugin_dir_url( __FILE__ ) );
 
 require_once TBT_ACCESS_DIR . 'includes/account-screens.php';
+require_once TBT_ACCESS_DIR . 'includes/signup-guard.php';
 
 /*
  * Rules this file implements:
@@ -27,6 +28,9 @@ require_once TBT_ACCESS_DIR . 'includes/account-screens.php';
  *   - After sign-out: the sign-in screen with a "Wylogowano." banner.
  *   - Signed-out account screens are TBT-styled and in Polish
  *     (includes/account-screens.php).
+ *   - Open sign-up is closed (wp-login.php registration and the My account
+ *     form). Checkout and Users → Add New still create accounts, and every
+ *     new account records where it came from (includes/signup-guard.php).
  *
  * The theme's functions.php is never edited. Its legacy login code is unhooked
  * at runtime, so deactivating this plugin restores the old behaviour exactly.
