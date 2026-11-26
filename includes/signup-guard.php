@@ -10,6 +10,8 @@
  * Memberships purchases) and admin Users → Add New. In particular this file
  * does not use woocommerce_registration_errors, does not filter the checkout
  * sign-up/guest options and does not change wc_create_new_customer().
+ * (Since 0.3.0, includes/grants.php does require an account at checkout, but
+ * only when the cart holds a platform pass.)
  *
  * One switch: the tbt_access_open_signup filter (default false). When it
  * returns true, T1–T3 step aside completely. T4 always runs.

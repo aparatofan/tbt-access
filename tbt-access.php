@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       TBT Access
- * Description:       One sign-in page and one set of redirects for The Blue Tree. Replaces the theme's legacy login code at runtime.
- * Version:           0.2.2
+ * Description:       One sign-in page and one set of redirects for The Blue Tree, plus prepaid platform access passes. Replaces the theme's legacy login code at runtime.
+ * Version:           0.3.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            TBT
@@ -12,12 +12,18 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TBT_ACCESS_VERSION', '0.2.2' );
+define( 'TBT_ACCESS_VERSION', '0.3.0' );
 define( 'TBT_ACCESS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBT_ACCESS_URL', plugin_dir_url( __FILE__ ) );
 
 require_once TBT_ACCESS_DIR . 'includes/account-screens.php';
 require_once TBT_ACCESS_DIR . 'includes/signup-guard.php';
+require_once TBT_ACCESS_DIR . 'includes/grants.php';
+
+// Daily reminder event (includes/grants.php). Also self-healed on init,
+// because an FTP deploy never runs the activation hook.
+register_activation_hook( __FILE__, 'tbt_access_schedule_daily' );
+register_deactivation_hook( __FILE__, 'tbt_access_unschedule_daily' );
 
 /*
  * Rules this file implements:
@@ -31,6 +37,9 @@ require_once TBT_ACCESS_DIR . 'includes/signup-guard.php';
  *   - Open sign-up is closed (wp-login.php registration and the My account
  *     form). Checkout and Users → Add New still create accounts, and every
  *     new account records where it came from (includes/signup-guard.php).
+ *   - Platform access passes: a product grants access until a date (or for
+ *     life), buying again adds time, reminders go out before the end, and a
+ *     pass in the cart requires an account at checkout (includes/grants.php).
  *
  * The theme's functions.php is never edited. Its legacy login code is unhooked
  * at runtime, so deactivating this plugin restores the old behaviour exactly.
