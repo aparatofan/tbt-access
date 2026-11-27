@@ -26,7 +26,8 @@ defined( 'ABSPATH' ) || exit;
  * ---------------------------------------------------------------------- */
 
 /**
- * The records seeded on first run (spec T1, Phase 0 corrections applied).
+ * The records seeded on first run (spec T1, Phase 0 corrections applied,
+ * library pages as corrected on the live site in 0.4.1).
  *
  * @return array[]
  */
@@ -37,7 +38,9 @@ function tbt_access_seed_records() {
 			'name'        => 'Cała biblioteka',
 			'description' => '',
 			'categories'  => array( 668, 497, 498, 507, 1738 ),
-			'pages'       => array( 735, 803, 11160, 11231, 11246, 11252, 11262, 11269, 11274, 11283, 11290, 11297, 11303, 11311, 11334, 11343, 11352, 11360, 11370, 11396, 12750, 14982, 7668, 7680, 225614, 225646, 226096 ),
+			// 0.4.1: only the three tool pages. The other 24 were category
+			// listing pages, which must stay visible (decision 1).
+			'pages'       => array( 225614, 225646, 226096 ),
 			'posts'       => array(),
 			'exclusive'   => false,
 		),
@@ -1346,7 +1349,8 @@ function tbt_access_find_post( $text ) {
 		return get_post( (int) $text ) ? (int) $text : 0;
 	}
 
-	$id = url_to_postid( $text );
+	$text = tbt_access_normalise_check_url( $text );
+	$id   = url_to_postid( $text );
 
 	if ( ! $id ) {
 		// ?p=123 / ?page_id=123 links.
@@ -1356,6 +1360,57 @@ function tbt_access_find_post( $text ) {
 	}
 
 	return $id && get_post( $id ) ? (int) $id : 0;
+}
+
+/**
+ * Make a pasted address a full URL on this site (0.4.1):
+ * "thebluetree.pl/black-box-thinking/", "www.…", "//…" and "/black-box-thinking/"
+ * all work. The scheme and the www prefix follow the home URL, because
+ * url_to_postid() only recognises the site's own form.
+ *
+ * @param string $text Pasted address.
+ * @return string
+ */
+function tbt_access_normalise_check_url( $text ) {
+	$text = trim( (string) $text );
+
+	if ( str_starts_with( $text, '//' ) ) {
+		$text = 'https:' . $text;
+	} elseif ( str_starts_with( $text, '/' ) ) {
+		return home_url( $text );
+	} elseif ( ! preg_match( '#^[a-z][a-z0-9+.-]*://#i', $text ) ) {
+		// "black-box-thinking/" (no dot before the first slash) is a path, not a host.
+		$first = strtok( $text, '/?#' );
+		if ( false === $first || ( ! str_contains( $first, '.' ) && ! str_contains( $first, ':' ) ) ) {
+			return home_url( '/' . ltrim( $text, '/' ) );
+		}
+		$text = 'https://' . $text;
+	}
+
+	$parts = wp_parse_url( $text );
+	$home  = wp_parse_url( home_url( '/' ) );
+
+	if ( empty( $parts['host'] ) || empty( $home['host'] ) ) {
+		return $text;
+	}
+
+	$bare = static fn( $host ) => preg_replace( '/^www\./i', '', strtolower( (string) $host ) );
+
+	// Another site: leave it, url_to_postid() will find nothing.
+	if ( $bare( $parts['host'] ) !== $bare( $home['host'] ) ) {
+		return $text;
+	}
+
+	$path  = $parts['path'] ?? '/';
+	$query = isset( $parts['query'] ) ? '?' . $parts['query'] : '';
+
+	// home_url() already carries the site's scheme, host and any subfolder.
+	$home_path = isset( $home['path'] ) ? rtrim( $home['path'], '/' ) : '';
+	if ( '' !== $home_path && str_starts_with( $path, $home_path ) ) {
+		$path = substr( $path, strlen( $home_path ) );
+	}
+
+	return home_url( $path ) . $query;
 }
 
 /**

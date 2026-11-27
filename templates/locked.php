@@ -1,9 +1,10 @@
 <?php
 /**
- * Buy page shown instead of a locked lesson (0.4.0 T5).
+ * Buy page shown instead of a locked lesson's content (0.4.0 T5).
  *
- * Rendered by tbt_access_render_locked() between get_header() and
- * get_footer(). Expects:
+ * Since 0.4.1 it is the post content only: tbt_access_locked_html() renders
+ * it into the_content, and the theme's own template (Divi Theme Builder
+ * header, footer, title, featured image) stays around it. Expects:
  *   $tbt_locked_post  WP_Post  The lesson.
  *   $tbt_locked_offer array    tbt_access_offer_for(): type sale|none|exclusive, course, product_id.
  *
@@ -68,20 +69,8 @@ $tbt_signin_line = static function () use ( $tbt_texts, $tbt_signin ) {
 	);
 };
 ?>
-<div id="main-content" class="tbt-locked">
+<div class="tbt-locked">
 	<div class="tbt-locked__wrap">
-
-		<header class="tbt-locked__lesson">
-			<?php if ( has_post_thumbnail( $tbt_post ) ) : ?>
-				<div class="tbt-locked__image">
-					<?php echo get_the_post_thumbnail( $tbt_post, 'large', array( 'alt' => '' ) ); ?>
-					<span class="tbt-locked__lock" aria-hidden="true">
-						<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-					</span>
-				</div>
-			<?php endif; ?>
-			<h1 class="tbt-locked__title"><?php echo esc_html( get_the_title( $tbt_post ) ); ?></h1>
-		</header>
 
 		<?php if ( 'sale' === $tbt_type ) : ?>
 
@@ -138,12 +127,11 @@ $tbt_signin_line = static function () use ( $tbt_texts, $tbt_signin ) {
 				if ( ! $tbt_p instanceof WC_Product ) {
 					continue;
 				}
-				$tbt_free = tbt_access_free_lessons( $tbt_c['categories'], 1 );
-				$tbt_url  = $tbt_free ? (string) get_permalink( $tbt_free[0] ) : tbt_access_course_url( $tbt_key );
+				// "Zobacz kurs" opens the course's product page (0.4.1).
 				$tbt_cards[] = array(
 					'course'  => $tbt_c,
 					'product' => $tbt_p,
-					'url'     => '' !== $tbt_url ? $tbt_url : (string) get_permalink( $tbt_pid ),
+					'url'     => (string) $tbt_p->get_permalink(),
 				);
 			}
 

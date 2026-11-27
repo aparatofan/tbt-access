@@ -1,6 +1,8 @@
 /* ==========================================================================
-   TBT Access — buy page shown instead of a locked lesson (0.4.0 T5).
-   Loaded only on that page.
+   TBT Access — buy page shown instead of a locked lesson's content (0.4.0 T5).
+   Loaded only on that page. Since 0.4.1 it sits inside the theme's content
+   area (Divi post template / Theme Builder), so it sets no page background
+   and leaves the title and featured image to the theme.
 
    Scoped under .tbt-locked. Colours read TBT Hub tokens with the Style Book
    values as fallbacks (same as the 0.2.0 account screens). Class-on-class
@@ -20,8 +22,8 @@
 
 	box-sizing: border-box;
 	width: 100%;
-	padding: 56px 24px 72px;
-	background: var(--tbt-locked-canvas);
+	margin: 8px 0 32px;
+	padding: 0;
 	color: var(--tbt-locked-ink);
 	font-family: var(--tbt-locked-font-ui);
 	font-size: 16px;
@@ -39,7 +41,7 @@
 	flex-direction: column;
 	gap: 28px;
 	max-width: 880px;
-	margin: 0 auto;
+	margin: 0;
 }
 
 .tbt-locked .tbt-locked__wrap h1,
@@ -49,57 +51,6 @@
 .tbt-locked .tbt-locked__wrap ul {
 	margin: 0;
 	padding: 0;
-}
-
-/* Lesson ------------------------------------------------------------------ */
-
-.tbt-locked .tbt-locked__lesson {
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-}
-
-.tbt-locked .tbt-locked__image {
-	position: relative;
-	overflow: hidden;
-	border-radius: var(--tbt-radius-panel, 22px);
-	border: 1px solid var(--tbt-locked-border);
-	background: var(--tbt-locked-surface);
-}
-
-.tbt-locked .tbt-locked__image img {
-	display: block;
-	width: 100%;
-	height: auto;
-	max-height: 380px;
-	object-fit: cover;
-	filter: saturate(.35);
-	opacity: .75;
-}
-
-.tbt-locked .tbt-locked__lock {
-	position: absolute;
-	top: 16px;
-	left: 16px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 44px;
-	height: 44px;
-	border-radius: 999px;
-	background: var(--tbt-locked-ink);
-	color: #FFFFFF;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
-}
-
-.tbt-locked .tbt-locked__title {
-	font-family: var(--tbt-locked-font-content);
-	font-weight: 700;
-	font-size: 36px;
-	line-height: 1.2;
-	letter-spacing: -.01em;
-	color: var(--tbt-locked-ink);
-	text-transform: none;
 }
 
 /* Gradient panel ---------------------------------------------------------- */
@@ -144,7 +95,8 @@
 	opacity: .9;
 }
 
-.tbt-locked .tbt-locked__panel a:not(.tbt-locked__button) {
+.tbt-locked .tbt-locked__panel a:not(.tbt-locked__button),
+.tbt-locked .tbt-locked__panel a:not(.tbt-locked__button):hover {
 	color: #FFFFFF;
 	font-weight: 600;
 	text-decoration: underline;
@@ -307,14 +259,6 @@
 /* Small screens ----------------------------------------------------------- */
 
 @media (max-width: 640px) {
-	.tbt-locked {
-		padding: 32px 16px 48px;
-	}
-
-	.tbt-locked .tbt-locked__title {
-		font-size: 28px;
-	}
-
 	.tbt-locked .tbt-locked__panel {
 		padding: 28px 22px;
 	}
@@ -326,4 +270,37 @@
 	.tbt-locked .tbt-locked__buy .tbt-locked__button {
 		width: 100%;
 	}
+}
+
+/* Inside Divi's content area (0.4.1) ---------------------------------------
+   Divi styles content with ID selectors (#left-area ul, #main-content …),
+   which beat class selectors. :is() with an ID carries ID specificity, so
+   these resets win there and cost nothing elsewhere. */
+
+:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__wrap :is(h2, h3, p, ul, li) {
+	margin: 0;
+	padding: 0;
+}
+
+:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__free-list {
+	list-style: none;
+}
+
+:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__heading,
+:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__panel .tbt-locked__price,
+:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__panel a:not(.tbt-locked__button) {
+	color: #FFFFFF;
+}
+
+:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__button {
+	color: #FFFFFF;
+	text-decoration: none;
+}
+
+:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__button--light {
+	color: var(--tbt-locked-blue);
+}
+
+:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__card-title {
+	color: var(--tbt-locked-blue);
 }

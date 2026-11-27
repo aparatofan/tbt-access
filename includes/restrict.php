@@ -1,10 +1,11 @@
 <?php
 /**
- * Content restriction (0.4.0).
+ * Content restriction (0.4.0; content swap reworked in 0.4.1).
  *
- *   T3  Enforcement: locked lessons render the buy page (200, noindex) inside
- *       the theme; REST responses carry an excerpt instead of the content;
- *       an admin-bar note for editors.
+ *   T3  Enforcement: a locked lesson keeps the theme's own template and only
+ *       its content becomes the buy page (noindex); everywhere else a locked
+ *       post's content is its excerpt (archives, blog modules, home, search,
+ *       feeds, REST); an admin-bar note for editors.
  *   T4  Locked look in lists: post_class tbt-locked / tbt-free + CSS.
  *   T5  Buy page (templates/locked.php) and the "buy course" link handler.
  *   T6  Free lesson switch (meta box, list column, filter).
@@ -89,20 +90,31 @@ function tbt_access_safe_excerpt( WP_Post $post ) {
 }
 
 /* -------------------------------------------------------------------------
- * T3 — Singular views: the buy page
+ * T3 — Locked content: buy page in the lesson's own template, excerpts
+ * everywhere else (0.4.1)
+ *
+ * The theme renders a locked lesson exactly as usual (Divi Theme Builder
+ * header, footer, title and featured image, with their styles). Only the
+ * post content is swapped, by one late the_content filter:
+ *
+ *   - the lesson being viewed (singular)      → the buy page (templates/locked.php)
+ *   - every other place a locked post's content is printed (archives, Divi
+ *     blog modules, home, search, feeds, REST, AJAX pagination)
+ *                                            → its plain excerpt
  * ---------------------------------------------------------------------- */
 
-add_action( 'template_redirect', 'tbt_access_enforce_singular', 15 );
+add_action( 'template_redirect', 'tbt_access_prepare_locked_singular', 15 );
 
 /**
- * Replace a locked lesson with the buy page.
+ * On a locked lesson: remember it, set the headers, load the buy-page styles
+ * and close its comments. The page itself is rendered by the theme.
  *
  * Priority 15: after the 0.1.0 sign-in redirects (5) and WooCommerce's own
  * template_redirect work (10).
  *
  * @return void
  */
-function tbt_access_enforce_singular() {
+function tbt_access_prepare_locked_singular() {
 	if ( ! tbt_access_enforcing() || is_admin() || is_feed() || is_embed() || ! is_singular() ) {
 		return;
 	}
@@ -124,30 +136,92 @@ function tbt_access_enforce_singular() {
 		return;
 	}
 
-	tbt_access_render_locked( $post );
-	exit;
-}
+	$GLOBALS['tbt_access_locked_main'] = (int) $post->ID;
 
-/**
- * Render templates/locked.php inside the theme's header and footer.
- *
- * @param WP_Post $post The locked post.
- * @return void
- */
-function tbt_access_render_locked( WP_Post $post ) {
-	status_header( 200 );
 	header( 'X-Robots-Tag: noindex', true );
 
 	if ( is_user_logged_in() ) {
 		nocache_headers();
 	}
 
-	// Some SEO plugins print the description from the content.
 	add_filter( 'wp_robots', 'tbt_access_robots_noindex', 99 );
 	add_filter( 'body_class', static fn( $classes ) => array_merge( (array) $classes, array( 'tbt-locked-page' ) ) );
 
-	tbt_access_enqueue_locked_style();
+	// Comments under a locked lesson stay hidden too.
+	$id = (int) $post->ID;
+	add_filter( 'comments_open', static fn( $open, $post_id ) => (int) $post_id === $id ? false : $open, 99, 2 );
+	add_filter( 'pings_open', static fn( $open, $post_id ) => (int) $post_id === $id ? false : $open, 99, 2 );
+	add_filter( 'get_comments_number', static fn( $count, $post_id ) => (int) $post_id === $id ? 0 : $count, 99, 2 );
+	add_filter( 'comments_array', static fn( $comments, $post_id ) => (int) $post_id === $id ? array() : $comments, 99, 2 );
 
+	tbt_access_enqueue_locked_style();
+}
+
+add_filter( 'the_content', 'tbt_access_filter_content', 999999 );
+
+/**
+ * Swap the content of locked posts.
+ *
+ * Priority 999999: after Divi's builder output, shortcodes, wpautop and the
+ * other content filters, so none of the lesson survives. Runs on the front
+ * end, in REST, feeds and AJAX (Divi blog module pagination); never on
+ * admin screens.
+ *
+ * @param string $content Rendered content.
+ * @return string
+ */
+function tbt_access_filter_content( $content ) {
+	if ( ! tbt_access_enforcing() || ( is_admin() && ! wp_doing_ajax() ) ) {
+		return $content;
+	}
+
+	$post = get_post();
+
+	if ( ! $post instanceof WP_Post ) {
+		return $content;
+	}
+
+	try {
+		$locked = tbt_access_is_locked_for_viewer( $post->ID );
+	} catch ( \Throwable $e ) {
+		tbt_access_log( 'content filter failed on post ' . $post->ID . ': ' . $e->getMessage() );
+		$locked = true;
+	}
+
+	if ( ! $locked ) {
+		return $content;
+	}
+
+	$main = (int) ( $GLOBALS['tbt_access_locked_main'] ?? 0 );
+
+	// The lesson being viewed gets the buy page; excerpt generation, <head>
+	// (SEO / sharing plugins) and every other post get the excerpt.
+	if ( $main === (int) $post->ID && ! doing_action( 'wp_head' ) && ! doing_filter( 'get_the_excerpt' ) && ! doing_filter( 'wp_trim_excerpt' ) ) {
+		return tbt_access_locked_html( $post );
+	}
+
+	return tbt_access_excerpt_html( $post );
+}
+
+/**
+ * A locked post's excerpt as content HTML.
+ *
+ * @param WP_Post $post Post.
+ * @return string
+ */
+function tbt_access_excerpt_html( WP_Post $post ) {
+	$excerpt = tbt_access_safe_excerpt( $post );
+
+	return '' === $excerpt ? '' : '<p class="tbt-locked-excerpt">' . esc_html( $excerpt ) . '</p>';
+}
+
+/**
+ * The buy page (templates/locked.php) as a string.
+ *
+ * @param WP_Post $post The locked lesson.
+ * @return string
+ */
+function tbt_access_locked_html( WP_Post $post ) {
 	$offer = array(
 		'type'       => 'none',
 		'course'     => null,
@@ -160,62 +234,27 @@ function tbt_access_render_locked( WP_Post $post ) {
 		tbt_access_log( 'offer for post ' . $post->ID . ' failed: ' . $e->getMessage() );
 	}
 
-	// Divi (and any classic theme) has header.php / footer.php. A block theme
-	// has none, so it gets its own header and footer template parts instead.
-	$block_theme = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
-
-	if ( $block_theme ) {
-		tbt_access_block_theme_open();
-	} else {
-		get_header();
-	}
-
 	$template = TBT_ACCESS_DIR . 'templates/locked.php';
 
-	if ( file_exists( $template ) ) {
+	if ( ! file_exists( $template ) ) {
+		return tbt_access_excerpt_html( $post );
+	}
+
+	tbt_access_enqueue_locked_style(); // Footer fallback if template_redirect didn't run.
+
+	ob_start();
+
+	try {
 		$tbt_locked_post  = $post;
 		$tbt_locked_offer = $offer;
 		include $template;
+	} catch ( \Throwable $e ) {
+		ob_end_clean();
+		tbt_access_log( 'buy page for post ' . $post->ID . ' failed: ' . $e->getMessage() );
+		return tbt_access_excerpt_html( $post );
 	}
 
-	if ( $block_theme ) {
-		tbt_access_block_theme_close();
-	} else {
-		get_footer();
-	}
-}
-
-/**
- * Document start for a block theme (fallback; the live site runs Divi).
- *
- * @return void
- */
-function tbt_access_block_theme_open() {
-	?>
-<!DOCTYPE html>
-<html <?php language_attributes(); ?>>
-<head>
-<meta charset="<?php bloginfo( 'charset' ); ?>">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-	<?php wp_head(); ?>
-</head>
-<body <?php body_class(); ?>>
-	<?php
-	wp_body_open();
-	echo '<div class="wp-site-blocks">';
-	block_template_part( 'header' );
-}
-
-/**
- * Document end for a block theme.
- *
- * @return void
- */
-function tbt_access_block_theme_close() {
-	block_template_part( 'footer' );
-	echo '</div>';
-	wp_footer();
-	echo '</body></html>';
+	return (string) ob_get_clean();
 }
 
 /**
