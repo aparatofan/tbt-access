@@ -1,11 +1,11 @@
 <?php
 /**
- * Content restriction (0.4.0; content swap reworked in 0.4.1).
+ * Content restriction (0.4.0; reworked in 0.4.1 and 0.4.2).
  *
- *   T3  Enforcement: a locked lesson keeps the theme's own template and only
- *       its content becomes the buy page (noindex); everywhere else a locked
- *       post's content is its excerpt (archives, blog modules, home, search,
- *       feeds, REST); an admin-bar note for editors.
+ *   T3  Enforcement: a locked lesson shows a standalone full-page locked
+ *       screen (noindex), without the theme's templates; everywhere else a
+ *       locked post's content is its excerpt (archives, blog modules, home,
+ *       search, feeds, REST); an admin-bar note for editors.
  *   T4  Locked look in lists: post_class tbt-locked / tbt-free + CSS.
  *   T5  Buy page (templates/locked.php) and the "buy course" link handler.
  *   T6  Free lesson switch (meta box, list column, filter).
@@ -90,31 +90,29 @@ function tbt_access_safe_excerpt( WP_Post $post ) {
 }
 
 /* -------------------------------------------------------------------------
- * T3 — Locked content: buy page in the lesson's own template, excerpts
- * everywhere else (0.4.1)
+ * T3 — Locked content (0.4.2)
  *
- * The theme renders a locked lesson exactly as usual (Divi Theme Builder
- * header, footer, title and featured image, with their styles). Only the
- * post content is swapped, by one late the_content filter:
- *
- *   - the lesson being viewed (singular)      → the buy page (templates/locked.php)
- *   - every other place a locked post's content is printed (archives, Divi
- *     blog modules, home, search, feeds, REST, AJAX pagination)
- *                                            → its plain excerpt
+ *   - The lesson being viewed: a standalone full-page screen
+ *     (templates/locked.php) in the 0.2.0 sign-in layout, with its own
+ *     <html>, wp_head() and wp_footer(). No theme template runs, so none of
+ *     Divi's Theme Builder header, footer or post layout (site menu, lesson
+ *     nav, "THE END OF THE LESSON") appears.
+ *   - Everywhere else a locked post's content is printed (archives, Divi
+ *     blog modules, home, search, feeds, REST, AJAX pagination): its plain
+ *     excerpt, through one late the_content filter (0.4.1).
  * ---------------------------------------------------------------------- */
 
-add_action( 'template_redirect', 'tbt_access_prepare_locked_singular', 15 );
+add_action( 'template_redirect', 'tbt_access_enforce_singular', 15 );
 
 /**
- * On a locked lesson: remember it, set the headers, load the buy-page styles
- * and close its comments. The page itself is rendered by the theme.
+ * Show the locked screen instead of a locked lesson.
  *
  * Priority 15: after the 0.1.0 sign-in redirects (5) and WooCommerce's own
- * template_redirect work (10).
+ * template_redirect work (10), before the theme picks a template.
  *
  * @return void
  */
-function tbt_access_prepare_locked_singular() {
+function tbt_access_enforce_singular() {
 	if ( ! tbt_access_enforcing() || is_admin() || is_feed() || is_embed() || ! is_singular() ) {
 		return;
 	}
@@ -136,8 +134,18 @@ function tbt_access_prepare_locked_singular() {
 		return;
 	}
 
-	$GLOBALS['tbt_access_locked_main'] = (int) $post->ID;
+	tbt_access_render_locked_screen( $post );
+	exit;
+}
 
+/**
+ * Print the full locked screen.
+ *
+ * @param WP_Post $post The locked lesson.
+ * @return void
+ */
+function tbt_access_render_locked_screen( WP_Post $post ) {
+	status_header( 200 );
 	header( 'X-Robots-Tag: noindex', true );
 
 	if ( is_user_logged_in() ) {
@@ -145,22 +153,70 @@ function tbt_access_prepare_locked_singular() {
 	}
 
 	add_filter( 'wp_robots', 'tbt_access_robots_noindex', 99 );
-	add_filter( 'body_class', static fn( $classes ) => array_merge( (array) $classes, array( 'tbt-locked-page' ) ) );
+	add_filter( 'body_class', 'tbt_access_locked_body_class', 99 );
 
-	// Comments under a locked lesson stay hidden too.
-	$id = (int) $post->ID;
-	add_filter( 'comments_open', static fn( $open, $post_id ) => (int) $post_id === $id ? false : $open, 99, 2 );
-	add_filter( 'pings_open', static fn( $open, $post_id ) => (int) $post_id === $id ? false : $open, 99, 2 );
-	add_filter( 'get_comments_number', static fn( $count, $post_id ) => (int) $post_id === $id ? 0 : $count, 99, 2 );
-	add_filter( 'comments_array', static fn( $comments, $post_id ) => (int) $post_id === $id ? array() : $comments, 99, 2 );
+	add_action( 'wp_enqueue_scripts', 'tbt_access_enqueue_locked_assets', 99 );
 
-	tbt_access_enqueue_locked_style();
+	$offer = array(
+		'type'       => 'none',
+		'course'     => null,
+		'product_id' => null,
+	);
+
+	try {
+		$offer = tbt_access_offer_for( (int) $post->ID );
+	} catch ( \Throwable $e ) {
+		tbt_access_log( 'offer for post ' . $post->ID . ' failed: ' . $e->getMessage() );
+	}
+
+	$tbt_locked_post  = $post;
+	$tbt_locked_offer = $offer;
+
+	include TBT_ACCESS_DIR . 'templates/locked.php';
+}
+
+/**
+ * Body classes of the locked screen: ours, without Divi's Theme Builder
+ * markers (they only pad #page-container, which this screen doesn't have).
+ *
+ * @param string[] $classes Classes.
+ * @return string[]
+ */
+function tbt_access_locked_body_class( $classes ) {
+	$classes = array_filter(
+		(array) $classes,
+		static fn( $class ) => ! str_starts_with( (string) $class, 'et-tb-' )
+	);
+
+	$classes[] = 'tbt-locked-screen';
+
+	return array_values( $classes );
+}
+
+/**
+ * Styles of the locked screen: the 0.2.0 screen styles (panel, hero, tree,
+ * buttons) plus the locked-screen additions, and the fonts they use.
+ *
+ * @return void
+ */
+function tbt_access_enqueue_locked_assets() {
+	wp_enqueue_style(
+		'tbt-access-locked-fonts',
+		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&family=Roboto+Slab:wght@700&display=swap',
+		array(),
+		null // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- Google Fonts URL must stay exact.
+	);
+
+	$deps = wp_style_is( 'tbt-tokens', 'registered' ) ? array( 'tbt-tokens' ) : array();
+
+	wp_enqueue_style( 'tbt-access-screens', TBT_ACCESS_URL . 'assets/tbt-access.css', $deps, tbt_access_asset_version( 'assets/tbt-access.css' ) );
+	wp_enqueue_style( 'tbt-access-locked', TBT_ACCESS_URL . 'assets/tbt-access-locked.css', array( 'tbt-access-screens' ), tbt_access_asset_version( 'assets/tbt-access-locked.css' ) );
 }
 
 add_filter( 'the_content', 'tbt_access_filter_content', 999999 );
 
 /**
- * Swap the content of locked posts.
+ * A locked post's content is its excerpt, wherever it is printed.
  *
  * Priority 999999: after Divi's builder output, shortcodes, wpautop and the
  * other content filters, so none of the lesson survives. Runs on the front
@@ -188,19 +244,7 @@ function tbt_access_filter_content( $content ) {
 		$locked = true;
 	}
 
-	if ( ! $locked ) {
-		return $content;
-	}
-
-	$main = (int) ( $GLOBALS['tbt_access_locked_main'] ?? 0 );
-
-	// The lesson being viewed gets the buy page; excerpt generation, <head>
-	// (SEO / sharing plugins) and every other post get the excerpt.
-	if ( $main === (int) $post->ID && ! doing_action( 'wp_head' ) && ! doing_filter( 'get_the_excerpt' ) && ! doing_filter( 'wp_trim_excerpt' ) ) {
-		return tbt_access_locked_html( $post );
-	}
-
-	return tbt_access_excerpt_html( $post );
+	return $locked ? tbt_access_excerpt_html( $post ) : $content;
 }
 
 /**
@@ -213,48 +257,6 @@ function tbt_access_excerpt_html( WP_Post $post ) {
 	$excerpt = tbt_access_safe_excerpt( $post );
 
 	return '' === $excerpt ? '' : '<p class="tbt-locked-excerpt">' . esc_html( $excerpt ) . '</p>';
-}
-
-/**
- * The buy page (templates/locked.php) as a string.
- *
- * @param WP_Post $post The locked lesson.
- * @return string
- */
-function tbt_access_locked_html( WP_Post $post ) {
-	$offer = array(
-		'type'       => 'none',
-		'course'     => null,
-		'product_id' => null,
-	);
-
-	try {
-		$offer = tbt_access_offer_for( (int) $post->ID );
-	} catch ( \Throwable $e ) {
-		tbt_access_log( 'offer for post ' . $post->ID . ' failed: ' . $e->getMessage() );
-	}
-
-	$template = TBT_ACCESS_DIR . 'templates/locked.php';
-
-	if ( ! file_exists( $template ) ) {
-		return tbt_access_excerpt_html( $post );
-	}
-
-	tbt_access_enqueue_locked_style(); // Footer fallback if template_redirect didn't run.
-
-	ob_start();
-
-	try {
-		$tbt_locked_post  = $post;
-		$tbt_locked_offer = $offer;
-		include $template;
-	} catch ( \Throwable $e ) {
-		ob_end_clean();
-		tbt_access_log( 'buy page for post ' . $post->ID . ' failed: ' . $e->getMessage() );
-		return tbt_access_excerpt_html( $post );
-	}
-
-	return (string) ob_get_clean();
 }
 
 /**
@@ -271,28 +273,15 @@ function tbt_access_robots_noindex( $robots ) {
 	return $robots;
 }
 
-/**
- * Styles for the buy page.
- *
- * @return void
- */
-function tbt_access_enqueue_locked_style() {
-	$deps = wp_style_is( 'tbt-tokens', 'registered' ) ? array( 'tbt-tokens' ) : array();
-
-	wp_enqueue_style(
-		'tbt-access-locked',
-		TBT_ACCESS_URL . 'assets/tbt-access-locked.css',
-		$deps,
-		tbt_access_asset_version( 'assets/tbt-access-locked.css' )
-	);
-}
-
 /* -------------------------------------------------------------------------
- * T5 — "KUP KURS": add to cart once, go to checkout
+ * T5 — ?tbt_buy=<product>: add to cart once, go to checkout
+ *
+ * Since 0.4.2 KUP KURS and ZOBACZ KURS link to the product page instead.
+ * The handler stays so links on pages cached before 0.4.2 keep working.
  * ---------------------------------------------------------------------- */
 
 /**
- * The buy link for a course product.
+ * The add-to-cart-and-checkout link for a course product (unused since 0.4.2).
  *
  * @param int $product_id Product ID.
  * @return string
@@ -512,10 +501,16 @@ add_action( 'wp_enqueue_scripts', 'tbt_access_enqueue_list_style', 20 );
  * The list styles: small, inline, front end only, only while enforcing.
  *
  * Phase 0.7: VIP cards are Divi blog modules, <article class="et_pb_post …">
- * with the image in .et_pb_image_container (which also holds TBT's
- * .tbt-actions overlay). The lock and the "Za darmo" pill sit top left, as
- * ::before, so they never replace .tbt-actions. Everything is wrapped in :where() so theme rules still win where they
- * set the same property.
+ * with the image in .et_pb_image_container, which also holds TBT's icon
+ * panel (.tbt-actions: the blue overlay with the rocket / level / stopwatch
+ * icons).
+ *
+ * Locked cards (0.4.2): the image stays greyed out, the icon panel (and
+ * anything else laid over the image, such as Divi's hover overlay) is
+ * hidden, and one larger lock sits in the centre of the image. Hiding needs
+ * !important, because the panel's own styles decide its display. Free cards
+ * keep their panel and get the "Za darmo" pill top left. Cards without an
+ * image get the marker by the title.
  *
  * @return void
  */
@@ -526,17 +521,23 @@ function tbt_access_enqueue_list_style() {
 
 	$lock = rawurlencode( '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>' );
 
-	$media = ':where(.tbt-locked, .tbt-free) :where(.et_pb_image_container, .post-thumbnail, .entry-featured-image-url)';
+	$box = ':where(.et_pb_image_container, .post-thumbnail)';
 
-	$css = $media . '{position:relative}'
+	$css = ':where(.tbt-locked, .tbt-free) ' . $box . '{position:relative}'
+		// Locked: grey image.
 		. ':where(.tbt-locked) :where(.et_pb_image_container, .post-thumbnail, .entry-featured-image-url) img{filter:saturate(.25);opacity:.6;transition:filter .2s ease,opacity .2s ease}'
-		. ':where(.tbt-locked):hover :where(.et_pb_image_container, .post-thumbnail, .entry-featured-image-url) img{filter:saturate(.6);opacity:.85}'
-		. ':where(.tbt-locked) :where(.et_pb_image_container, .post-thumbnail){position:relative}'
-		. ':where(.tbt-locked) :where(.et_pb_image_container, .post-thumbnail)::before{content:"";position:absolute;top:10px;left:10px;z-index:2;width:32px;height:32px;border-radius:999px;'
-		. 'background:var(--tbt-ink,#1F2937) url("data:image/svg+xml,' . $lock . '") center/18px 18px no-repeat;box-shadow:0 2px 6px rgba(0,0,0,.2);pointer-events:none}'
-		. ':where(.tbt-free) :where(.et_pb_image_container, .post-thumbnail)::before{content:"Za darmo";position:absolute;top:10px;left:10px;z-index:2;padding:4px 12px;border-radius:999px;'
+		. ':where(.tbt-locked):hover :where(.et_pb_image_container, .post-thumbnail, .entry-featured-image-url) img{filter:saturate(.5);opacity:.8}'
+		// Locked: no icon panel or other overlay on the image.
+		. '.tbt-locked .tbt-actions,'
+		. '.tbt-locked .et_pb_image_container > :not(a, img, picture),'
+		. '.tbt-locked .et_pb_image_container a > :not(img, picture){display:none!important}'
+		// Locked: one large lock in the centre.
+		. ':where(.tbt-locked) ' . $box . '::before{content:"";position:absolute;top:50%;left:50%;z-index:3;width:64px;height:64px;border-radius:999px;transform:translate(-50%,-50%);'
+		. 'background:var(--tbt-ink,#1F2937) url("data:image/svg+xml,' . $lock . '") center/30px 30px no-repeat;box-shadow:0 4px 14px rgba(0,0,0,.25);pointer-events:none}'
+		// Free: "Za darmo" pill top left (unchanged).
+		. ':where(.tbt-free) ' . $box . '::before{content:"Za darmo";position:absolute;top:10px;left:10px;z-index:3;padding:4px 12px;border-radius:999px;'
 		. 'background:var(--tbt-success,#16803C);color:#FFFFFF;font:600 12px/1.4 var(--tbt-font-ui,"Roboto",sans-serif);letter-spacing:.04em;box-shadow:0 2px 6px rgba(0,0,0,.2);pointer-events:none}'
-		// No image: put the marker before the title instead.
+		// No image: marker by the title.
 		. ':where(.tbt-locked):not(:has(.et_pb_image_container, .post-thumbnail)) :where(.entry-title)::before{content:"🔒 ";font-size:.85em}'
 		. ':where(.tbt-free):not(:has(.et_pb_image_container, .post-thumbnail)) :where(.entry-title)::after{content:"Za darmo";display:inline-block;margin-left:8px;padding:2px 10px;border-radius:999px;vertical-align:middle;'
 		. 'background:var(--tbt-success,#16803C);color:#FFFFFF;font:600 12px/1.4 var(--tbt-font-ui,"Roboto",sans-serif)}';

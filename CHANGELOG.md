@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.2 — 2026-11-27
+
+The locked page is reworked as its own screen. Access rules are unchanged. No new keys.
+
+- **Locked lesson = a clean full-page screen.** In 0.4.1 the buy page replaced only the post content, so Divi's Theme Builder post layout stayed around it: the left site menu, the numbered lesson nav and "THE END OF THE LESSON / Świetnie! Lekcja ukończona!", with the locked block top-left under the menu.
+  - Now a locked lesson renders `templates/locked.php` as a standalone page at `template_redirect` and exits before the theme picks a template. It has its own `<html>`, `wp_head()` and `wp_footer()`, so styles load, but no Theme Builder header, footer or body layout.
+  - **Layout:** the 0.2.0 sign-in screen layout, centred on the canvas, for all three variants. The gradient hero on the left carries "THE BLUE TREE", the course name ("Biblioteka" on B), one line and the small white tree bottom-right. The card column on the right holds:
+    - **← Wróć do strony głównej**;
+    - the featured image (greyed, with a centred lock) when there is one;
+    - "LEKCJA" and the lesson title;
+    - the A (sale), B (not on sale, with course cards and free lessons) or C (manual course) block;
+    - "Masz już ten kurs? Zaloguj się" for signed-out visitors.
+  - Buttons are the 0.2.0 primary button. Hero texts are in the text array at the top of the template with the rest.
+  - The page loads `tbt-access.css` (0.2.0) plus `tbt-access-locked.css`, and Roboto, Roboto Slab and Roboto Mono.
+  - Kept: status 200, `noindex` (header and robots tag), `nocache_headers()` for signed-in visitors. Divi's `et-tb-*` body classes are dropped on this screen.
+- **KUP KURS (A) and ZOBACZ KURS (B) both link to the course's product page.** The `?tbt_buy=` add-to-cart handler stays only so links on pages cached before 0.4.2 keep working.
+- **Locked list cards:** the lesson's icon panel inside `.et_pb_image_container` (`.tbt-actions`: rocket / level bars / stopwatch), and anything else laid over the image (Divi's hover overlay), is hidden. In its place is one larger lock (64 px), centred on the image. The image stays greyed out. Free cards are unchanged. Cards without an image keep the 🔒 by the title.
+- Everywhere else a locked post is printed (archives, blog modules, home, search, feeds, REST), its content is still the excerpt (0.4.1).
+
+After deploy: purge LiteSpeed's cache.
+
 ## 0.4.1 — 2026-11-27
 
 Fixes from the live test of 0.4.0. No new keys.

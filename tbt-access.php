@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       TBT Access
  * Description:       One sign-in page and one set of redirects for The Blue Tree, prepaid platform access passes, and course and library access (replaces WooCommerce Memberships). Replaces the theme's legacy login code at runtime.
- * Version:           0.4.1
+ * Version:           0.4.2
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            TBT
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TBT_ACCESS_VERSION', '0.4.1' );
+define( 'TBT_ACCESS_VERSION', '0.4.2' );
 define( 'TBT_ACCESS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBT_ACCESS_URL', plugin_dir_url( __FILE__ ) );
 
