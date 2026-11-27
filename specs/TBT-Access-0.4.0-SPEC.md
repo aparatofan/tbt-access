@@ -20,10 +20,9 @@ WooCommerce Memberships restricts TBT's lessons today, and it leaks: the 0.3.0 t
 | Platform pass (0.3.0) | `platform` | Notes + Teacher Tools. **No lessons, no courses.** | Bought (1 month / 12 months) |
 | **Personal Productivity** | `course-personal-productivity` | cat 669 | **Bought**, lifetime |
 | **Man and Society** | `course-man-and-society` | cat 870 | **Bought**, lifetime |
-| Cała biblioteka | `library` | the whole library (Learning English, General Interest, Personal Development, …) **except manual courses** | By hand, migration from Memberships, later the 7-day trial. Not sold for now. |
+| Cała biblioteka | `library` | the whole library (Learning English, General Interest, Personal Development, Lucy, …) **except manual courses**, plus pages Multidecker Flashcards, Language Games, Mind-maps | By hand, migration from Memberships, later the 7-day trial. Not sold for now. |
 | Persuasive Presentations | `course-persuasive-presentations` | cat 731, page 11830, post 11861 | **By hand only** |
-| English for Graphic Designers | `course-graphic-designers` | cat 1423, pages 37315, 225614, 225646, 226096, post 37256 | **By hand only** |
-| How to say it | `course-how-to-say-it` | cat 1881 | **By hand only** |
+| English for Graphic Designers | `course-graphic-designers` | cat 1423, page 37315, post 37256 | **By hand only** |
 
 ## Locked decisions
 
@@ -36,7 +35,7 @@ WooCommerce Memberships restricts TBT's lessons today, and it leaks: the 0.3.0 t
    - Belongs to **no** course definition → open (normal pages, shop, blog, teacher-tool pages).
    - Belongs to one or more **exclusive** courses → open only with a grant for one of those exclusive courses. Nothing else opens it, not even `library`.
    - Otherwise → open with a grant for **any** course it belongs to. So a Personal Productivity lesson opens with `course-personal-productivity` **or** `library`.
-5. **Exclusive = the three manual courses.** They must never open through the library or anything else.
+5. **Exclusive = the two manual courses** (Persuasive Presentations, English for Graphic Designers). They must never open through the library or anything else.
 6. **The product that sells a course is found automatically:** the published product whose TBT Access grant (0.3.0 T2) is that course's key. No product → the course is "not on sale yet".
 7. **Course grants are lifetime when bought.** No reminder emails for anything except `platform` (0.3.0 T5 unchanged).
 8. **Grants never add capabilities** except `platform` (0.3.0 decision 2 unchanged). Courses and the library only open content.
@@ -48,7 +47,22 @@ WooCommerce Memberships restricts TBT's lessons today, and it leaks: the 0.3.0 t
 
 ---
 
-## Phase 0 — read-only inventory, then stop and report
+## Phase 0 — results (27 Nov 2026) — DONE
+
+Checked by Mariusz (phpMyAdmin, browser) and Claude (site connector, public URLs). Corrections are already applied to this spec.
+
+- **0.1** Category tree read. 808 = "VIP" (parent of 668, 497, 507, 773). 773 = "BUSINESS SKILLS" (731 Persuasive Presentations, 775, 776 empty). How to say it had **three** categories (1881, 1936, 1937) → course dropped instead (see Out of scope).
+- **0.2** No overlap left: 773 is outside every VIP rule, 1423 is top-level, and How to say it is dropped. Pages 225614 / 225646 / 226096 are Multidecker Flashcards, Language Games and Mind-maps (general tools, also in the VIP rules) → moved from Graphic Designers to `library`. **0.2c not needed: no VIP member loses anything.**
+- **0.3e** Published posts covered by no definition: category 947 "darmowa lekcja" (12 free lesson copies — **stay open, they are the free lessons**), 1030 "blog" (7, open), 1028 "testing" (1 test post, Mariusz decides). No leaks.
+- **0.4a** Hard-stop check passed: every key page (cart, checkout, My account, shop, terms, privacy, home, do-zobaczenia, Homework, Swipe, Students, Matching, Drag & Drop, Fill, Dictionary, Learning History, how-to-say-it-hub) = `no`.
+- **0.5** 7668 = "Entertainment", 7680 = "Travel and nature" (category landing pages) → library. 1738 "Lucy" = English video lessons (33) → library. 507 "PRIVATE EYES ONLY" holds Audio library (14) and Video library (3) → library.
+- **0.6** Statuses in the DB: `wcm-active`, `wcm-expired`, `wcm-cancelled`, `wcm-paused` only. Active to import: VIP Student 80 (12 dated), VIP Teacher 8 (1 dated), Teacher Access 2, Persuasive Presentations 17 (11 dated), Graphic Designers 1 = **108**. One Teacher Access membership is paused → not imported. `_end_date` is a UTC `Y-m-d H:i:s` string, empty when open-ended; max `2027-03-03 23:00:00`.
+- **0.7** VIP page cards are Divi blog module `<article class="et_pb_post … post-368160 post type-post status-publish … hentry tag-…">` → `post_class()` reaches the card; T4's class works. Note: no `category-*` classes appear on the card, and a TBT overlay `.tbt-actions` sits inside `.et_pb_image_container`.
+- **0.8** `/feed/` = excerpts only (OK). Site search = excerpts only (OK). **REST API `/wp-json/wp/v2/posts` returns full lesson content to anyone today** → T3 REST filter required. TBT tools expose no lesson body (CC's code review).
+- **0.9** "UPS!" is the site's **404 template** ("404 Not Found" title, text "Nie mogę ci jeszcze pokazać tej strony…"). Memberships' "Hide completely" makes restricted **category archives** 404, e.g. `/personal_development/personal-productivity/`. Meanwhile the **lesson itself opens signed out** (`/black-box-thinking/`): a live leak until 0.4.0. After switch-over, archives must render normally (decision 1) and the 404 template is only for real 404s; its wording can be fixed separately.
+- **0.10** Book codes unlock only the HUB reader app; nothing unlocks a WordPress category.
+
+## Phase 0 — read-only inventory, then stop and report (original brief)
 
 CC writes the SQL; Mariusz runs it in phpMyAdmin and pastes results. No code changes until Mariusz and Claude have read the report.
 
@@ -85,12 +99,11 @@ exclusive     bool
 
 | key | name | categories | pages / posts | exclusive |
 |---|---|---|---|---|
-| `library` | Cała biblioteka | 668, 497, 498, 507, 1738 | pages 735, 803, 11160, 11231, 11246, 11252, 11262, 11269, 11274, 11283, 11290, 11297, 11303, 11311, 11334, 11343, 11352, 11360, 11370, 11396, 12750, 14982, 7668, 7680 | no |
+| `library` | Cała biblioteka | 668, 497, 498, 507, 1738 | pages 735, 803, 11160, 11231, 11246, 11252, 11262, 11269, 11274, 11283, 11290, 11297, 11303, 11311, 11334, 11343, 11352, 11360, 11370, 11396, 12750, 14982, 7668, 7680, 225614, 225646, 226096 | no |
 | `course-personal-productivity` | Personal Productivity | 669 | — | no |
 | `course-man-and-society` | Man and Society | 870 | — | no |
 | `course-persuasive-presentations` | Persuasive Presentations | 731 | page 11830, post 11861 | **yes** |
-| `course-graphic-designers` | English for Graphic Designers | 1423 | pages 37315, 225614, 225646, 226096; post 37256 | **yes** |
-| `course-how-to-say-it` | How to say it | 1881 | — | **yes** |
+| `course-graphic-designers` | English for Graphic Designers | 1423 | page 37315; post 37256 | **yes** |
 
 Seeded descriptions are empty; Mariusz fills them in.
 
@@ -164,7 +177,7 @@ All texts in one PHP array at the top of the template so Mariusz's corrections a
 ### T8 — Admin: user profile, Users list, bulk grant, access check
 
 - **User profile → TBT Access:** one row per grant key (platform, library, every course): **none / until {date} / lifetime**, with the 0.3.0 controls (date, Lifetime, Remove). Source shown under each row: order links, "migrated from Memberships plan {name}", or "set by {admin} on {date}".
-- **Users list:** keep "Platform until"; add **"Courses"** column (administrators only): short labels of active grants, e.g. `Biblioteka, PP, How to say it`. Hover = full names and dates.
+- **Users list:** keep "Platform until"; add **"Courses"** column (administrators only): short labels of active grants, e.g. `Biblioteka, PP, Graphic Designers`. Hover = full names and dates.
 - **Bulk action** on Users: `TBT Access: grant…` and `TBT Access: remove…` with a course select (lifetime grant). For giving a group of his students a manual course in one go.
 - **Access check tool** (on the courses screen): pick a user (or "signed out") and paste a URL or post ID → **Open / Locked**, with the reason (free / editor / no course / which course and grant). Used for the acceptance tests and later for "why can't my student see this?".
 
@@ -172,7 +185,7 @@ All texts in one PHP array at the top of the template so Mariusz's corrections a
 
 A button on the courses screen: **"Import from WooCommerce Memberships"**. Two steps:
 
-1. **Preview** (no writes): a table of every user membership with status `wcm-active`, `wcm-complimentary`, `wcm-free_trial` or `wcm-pending-cancellation` (adjust to Phase 0.6): user, plan, → grant key, until (date or lifetime), and whether the user already has an equal or better grant.
+1. **Preview** (no writes): a table of every user membership with status `wcm-active` (Phase 0.6: the only statuses in the database are active, expired, cancelled and paused; paused = no access today, not imported): user, plan, → grant key, until (date or lifetime), and whether the user already has an equal or better grant.
 2. **Import:** writes grants with `tbt_access_set()`, **never shortening** an existing grant (lifetime beats a date; a later date beats an earlier one). Logs the run to `tbt_access_migration_log` (date, admin, counts per plan, skipped). Safe to run twice.
 
 Plan → grant map:
@@ -182,9 +195,9 @@ Plan → grant map:
 | 10988 VIP Student Access, 28834 VIP Teacher Access, 28429 Teacher Access, 28833 Student Access, 10786 / 10796 / 10799 | `library` |
 | 11815 Persuasive Presentations | `course-persuasive-presentations` |
 | 37312 English for Graphic Designers | `course-graphic-designers` |
-| 366754 How to say it | `course-how-to-say-it` |
+| 366754 How to say it | **not imported** (course dropped, 27 Nov) |
 
-`until` = the membership's end date at 23:59:59 Warsaw time, or lifetime when it has none (decision 9). Memberships data is only read, never changed.
+`until` = the membership's `_end_date` meta **as stored** (a UTC `Y-m-d H:i:s` instant, e.g. `2027-03-03 23:00:00` = midnight 4 March Warsaw), or lifetime when it is empty (decision 9). Memberships data is only read, never changed.
 
 ### T10 — My account: "Twoje kursy"
 
@@ -207,9 +220,9 @@ Bump `TBT_ACCESS_VERSION` and the header to `0.4.0`. CHANGELOG entry. Upgrade ro
 1. **Backup** (lh.pl snapshot or UpdraftPlus). Enforcement is **off** after deploy, so nothing changes for visitors yet.
 2. **Users → TBT Access courses:** check the six seeded definitions against the Phase 0 report; write the descriptions for Personal Productivity and Man and Society.
 3. **Create the two course products:** simple virtual products, **TBT Access → Grants: {course}, Duration: lifetime**, prices of your choice. Publish.
-4. **Mark the free lessons** (one per category).
-5. **Run the import** from Memberships: preview, check the numbers (about 131 memberships / 90 users), import.
-6. **Access check tool:** try the test account (no grants), a VIP member, a How to say it student and "signed out" on a few URLs from each course.
+4. **Free lessons:** the 12 posts in category 947 "darmowa lekcja" are in no definition, so they stay open as they are. Use the T6 switch only for any extra lesson you want free.
+5. **Run the import** from Memberships: preview, check the numbers (108 active memberships: VIP Student 80, VIP Teacher 8, Teacher Access 2, Persuasive Presentations 17, Graphic Designers 1), import.
+6. **Access check tool:** try the test account (no grants), a VIP member, a Persuasive Presentations student and "signed out" on a few URLs from each course.
 7. **Deactivate WooCommerce Memberships**, then set **Enforcement: on**, then **purge LiteSpeed's cache**. Do these three together.
 8. Run the acceptance checklist below.
 
@@ -220,7 +233,7 @@ Bump `TBT_ACCESS_VERSION` and the header to `0.4.0`. CHANGELOG entry. Upgrade ro
 ## Out of scope
 
 - **Mind-map discounts** for members (Memberships' 100% rules). They stop when Memberships is deactivated. If Mariusz wants them back, a small release gives `library` holders the discount.
-- How to say it **book codes** (HUB). Manual grants now.
+- **How to say it** is not a course any more (27 Nov): the book lives in the HUB; its 3 lessons move to library categories and categories 1881/1936/1937 are deleted by Mariusz. Plan 366754 is not imported.
 - Phase 3: free 7-day accounts (will grant `library` for 7 days, plus `platform` for teachers), sign-up, CAPTCHA, Google sign-in.
 - Selling the whole library. The key exists; the decision and product come later.
 - 0.3.1 (repeat purchase fixes), NIP field, `/welcome/` page.
@@ -234,11 +247,11 @@ Test account `hi@` with **no grants** unless stated.
 - [ ] **Signed out**, open a Learning English lesson: buy page **B** ("Oferta w przygotowaniu"), with the two course cards and the sign-in line.
 - [ ] Signed out, open a **free** lesson: the full lesson.
 - [ ] Signed out, open a Personal Productivity lesson: buy page **A** with price and **KUP KURS**; a lesson in a **subcategory** of a library category is blocked too.
-- [ ] Signed out, open a How to say it lesson: page **C**.
+- [ ] Signed out, open a Persuasive Presentations lesson: page **C**.
 - [ ] **Buy Personal Productivity** as `hi@` (100% coupon): order note `course "Personal Productivity" — lifetime`; every PP lesson opens; Man and Society and other library lessons still show the buy page; My account shows "Twoje kursy".
 - [ ] Refund that order: PP lessons lock again.
-- [ ] Give `hi@` **Cała biblioteka** on the profile: Learning English, General Interest, Personal Development, PP and Man and Society open; **How to say it, Persuasive Presentations and Graphic Designers stay locked** (exclusive).
-- [ ] Bulk-grant **How to say it** to `hi@` from the Users list: How to say it opens; Persuasive Presentations stays locked.
+- [ ] Give `hi@` **Cała biblioteka** on the profile: Learning English, General Interest, Personal Development, PP and Man and Society open; **Persuasive Presentations and Graphic Designers stay locked** (exclusive).
+- [ ] Bulk-grant **English for Graphic Designers** to `hi@` from the Users list: it opens; Persuasive Presentations stays locked.
 - [ ] Give `hi@` a **platform pass** only: teacher tools and Notes open; all lessons locked; lists show courses greyed out.
 - [ ] A migrated VIP member: library open; a migrated PwC member: Persuasive Presentations open with end date 2027-03-04 on the profile.
 - [ ] Category archive and the VIP page: locked lessons greyed with a lock, free ones with "Za darmo", for `hi@` and signed out.
