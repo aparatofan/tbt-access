@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.1 — 2026-11-27
+
+Fixes from the live test of 0.4.0. No new keys.
+
+- **Locked posts show only their excerpt everywhere except their own page.** 0.4.0 only cut REST. Divi archives, which print the full content, showed whole locked lessons below the lock icon, e.g. `/category/vip/general/society/`. Now one `the_content` filter at priority 999999 swaps the content of every locked post the viewer can't open. It runs after Divi's builder, shortcodes and wpautop, so none of the lesson survives. It covers category archives, Divi blog modules on any page (VIP, home), search, feeds, REST and AJAX pagination. The excerpt is the manual excerpt, otherwise 55 plain words with shortcodes stripped; the builder never runs. Open and free posts are untouched.
+- **A locked lesson keeps the normal theme template.** In 0.4.0 the page was replaced by `get_header()` + `templates/locked.php` + `get_footer()`, which drew the Divi Theme Builder header without its CSS (huge tree logo, unstyled menu). Now the theme renders the lesson exactly as usual: Theme Builder header and footer with their styles, title, featured image. The same filter swaps only the post content for the buy page.
+  - All three versions (A sale, B not on sale, C manual course) render this way.
+  - The `noindex` header and robots tag, `nocache_headers()` for signed-in visitors and the `tbt-locked-page` body class stay.
+  - Comments under a locked lesson are now hidden and closed.
+  - `templates/locked.php` no longer prints its own title, image or `#main-content` wrapper. `assets/tbt-access-locked.css` no longer paints a page background, and resets Divi's content-area rules (`#left-area ul` etc.) inside the buy page.
+- **ZOBACZ KURS** (not-on-sale page) links to the course's **product page**.
+- **Access check** accepts addresses without a scheme, e.g. `thebluetree.pl/black-box-thinking/`, as well as `www.…`, `//…`, `/black-box-thinking/` and a bare `black-box-thinking`. The scheme and `www` follow the site's own address.
+- **Seed:** a fresh install now seeds Cała biblioteka with only pages 225614, 225646 and 226096, matching the live correction. The other 24 were category listing pages, which must stay visible. Existing registries are not touched.
+
+After deploy: purge LiteSpeed's cache.
+
 ## 0.4.0 — 2026-11-27
 
 Courses, the library and content restriction, replacing WooCommerce Memberships. No custom tables. New keys, all additive: options `tbt_access_courses`, `tbt_access_enforce`, `tbt_access_migration_log`; post meta `_tbt_access_free`. Grants still live in user meta `tbt_access_grants` (new keys only); a grant set by hand or by the import also records an optional `source` (`{ type: admin|memberships, by, plan?, time }`) so the profile can say where it came from. 0.3.0 code ignores it. New files: `includes/courses.php`, `includes/restrict.php`, `includes/migrate.php`, `templates/locked.php`, `assets/tbt-access-locked.css`. Spec: `specs/TBT-Access-0.4.0-SPEC.md` (Phase 0 results included).
