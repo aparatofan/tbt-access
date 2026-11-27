@@ -1,306 +1,271 @@
 /* ==========================================================================
-   TBT Access — buy page shown instead of a locked lesson's content (0.4.0 T5).
-   Loaded only on that page. Since 0.4.1 it sits inside the theme's content
-   area (Divi post template / Theme Builder), so it sets no page background
-   and leaves the title and featured image to the theme.
+   TBT Access — locked screen (0.4.2). Loaded only on that screen, after
+   tbt-access.css (the 0.2.0 sign-in screens: panel, hero, tree, links,
+   buttons), which it extends.
 
-   Scoped under .tbt-locked. Colours read TBT Hub tokens with the Style Book
-   values as fallbacks (same as the 0.2.0 account screens). Class-on-class
-   selectors keep Divi's h1–h6 / p padding rules out.
+   The screen is a standalone page (no theme template), but wp_head() still
+   loads the theme's styles, so everything here is scoped under .tbt-locked
+   with class-on-class selectors, as in tbt-access.css.
    ========================================================================== */
 
-.tbt-locked {
-	--tbt-locked-blue:      var(--tbt-blue, #0856C9);
-	--tbt-locked-blue-dark: var(--tbt-blue-dark, #063F94);
-	--tbt-locked-canvas:    var(--tbt-canvas, #F6F8FC);
-	--tbt-locked-surface:   var(--tbt-surface, #FFFFFF);
-	--tbt-locked-border:    var(--tbt-border, #D8E3F0);
-	--tbt-locked-ink:       var(--tbt-ink, #1F2937);
-	--tbt-locked-muted:     var(--tbt-muted, #667085);
-	--tbt-locked-font-ui:      var(--tbt-font-ui, "Roboto", sans-serif);
-	--tbt-locked-font-content: var(--tbt-font-content, "Roboto Slab", Georgia, serif);
-
-	box-sizing: border-box;
-	width: 100%;
-	margin: 8px 0 32px;
-	padding: 0;
-	color: var(--tbt-locked-ink);
-	font-family: var(--tbt-locked-font-ui);
-	font-size: 16px;
-	line-height: 1.55;
-}
-
-.tbt-locked *,
-.tbt-locked *::before,
-.tbt-locked *::after {
-	box-sizing: border-box;
-}
-
-.tbt-locked .tbt-locked__wrap {
-	display: flex;
-	flex-direction: column;
-	gap: 28px;
-	max-width: 880px;
-	margin: 0;
-}
-
-.tbt-locked .tbt-locked__wrap h1,
-.tbt-locked .tbt-locked__wrap h2,
-.tbt-locked .tbt-locked__wrap h3,
-.tbt-locked .tbt-locked__wrap p,
-.tbt-locked .tbt-locked__wrap ul {
+body.tbt-locked-screen {
 	margin: 0;
 	padding: 0;
+	background: var(--tbt-canvas, #F6F8FC);
 }
 
-/* Gradient panel ---------------------------------------------------------- */
-
-.tbt-locked .tbt-locked__panel {
+/* Centre the panel on the canvas. */
+.tbt-access.tbt-locked {
 	display: flex;
-	flex-direction: column;
-	gap: 14px;
-	padding: 40px 44px;
-	border-radius: var(--tbt-radius-panel, 22px);
-	background: linear-gradient(160deg, var(--tbt-locked-blue) 0%, var(--tbt-locked-blue-dark) 100%);
-	box-shadow: var(--tbt-shadow, 0 6px 20px rgba(24, 56, 96, .07));
-	color: #FFFFFF;
-}
-
-.tbt-locked .tbt-locked__eyebrow {
-	font-family: var(--tbt-font-identity, "Roboto Mono", ui-monospace, monospace);
-	font-weight: 500;
-	font-size: 13px;
-	letter-spacing: .16em;
-	color: rgba(255, 255, 255, .85);
-}
-
-.tbt-locked .tbt-locked__heading {
-	font-family: var(--tbt-locked-font-content);
-	font-weight: 700;
-	font-size: 28px;
-	line-height: 1.25;
-	color: #FFFFFF;
-	text-transform: none;
-}
-
-.tbt-locked .tbt-locked__panel .tbt-locked__description,
-.tbt-locked .tbt-locked__note,
-.tbt-locked .tbt-locked__panel .tbt-locked__signin {
-	color: #FFFFFF;
-	font-size: 17px;
-}
-
-.tbt-locked .tbt-locked__note {
-	font-size: 15px;
-	opacity: .9;
-}
-
-.tbt-locked .tbt-locked__panel a:not(.tbt-locked__button),
-.tbt-locked .tbt-locked__panel a:not(.tbt-locked__button):hover {
-	color: #FFFFFF;
-	font-weight: 600;
-	text-decoration: underline;
-}
-
-.tbt-locked .tbt-locked__buy {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 16px 24px;
-	margin-top: 8px;
-}
-
-.tbt-locked .tbt-locked__panel .tbt-locked__price {
-	font-family: var(--tbt-locked-font-content);
-	font-weight: 700;
-	font-size: 30px;
-	color: #FFFFFF;
-}
-
-.tbt-locked .tbt-locked__price del {
-	opacity: .6;
-	font-size: .7em;
-	margin-right: 6px;
-}
-
-.tbt-locked .tbt-locked__price ins {
-	text-decoration: none;
-}
-
-/* Pill buttons ------------------------------------------------------------ */
-
-.tbt-locked .tbt-locked__button {
-	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 48px;
-	padding: 12px 32px;
-	border: 1px solid var(--tbt-locked-blue);
+	min-height: 100vh;
+	min-height: 100dvh;
+}
+
+.tbt-access.tbt-locked .tbt-access__panel {
+	width: 100%;
+}
+
+/* Course names can be long: a calmer hero title than "Logowanie". */
+.tbt-access.tbt-locked .tbt-access__hero-title {
+	font-size: 36px;
+	overflow-wrap: anywhere;
+}
+
+.tbt-access.tbt-locked .tbt-locked__column h2,
+.tbt-access.tbt-locked .tbt-locked__column h3,
+.tbt-access.tbt-locked .tbt-locked__column p,
+.tbt-access.tbt-locked .tbt-locked__column ul,
+.tbt-access.tbt-locked .tbt-locked__column li {
+	margin: 0;
+	padding: 0;
+}
+
+.tbt-access.tbt-locked .tbt-locked__column {
+	gap: 22px;
+}
+
+/* Lesson ------------------------------------------------------------------ */
+
+.tbt-access.tbt-locked .tbt-locked__lesson {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__image {
+	position: relative;
+	overflow: hidden;
+	margin-bottom: 10px;
+	border: 1px solid var(--tbt-access-border);
+	border-radius: var(--tbt-access-radius);
+	background: var(--tbt-access-input);
+}
+
+.tbt-access.tbt-locked .tbt-locked__image img {
+	display: block;
+	width: 100%;
+	height: 160px;
+	object-fit: cover;
+	filter: saturate(.3);
+	opacity: .7;
+}
+
+.tbt-access.tbt-locked .tbt-locked__lock {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 52px;
+	height: 52px;
 	border-radius: 999px;
-	background: var(--tbt-locked-blue);
+	background: var(--tbt-access-ink);
 	color: #FFFFFF;
-	font-family: var(--tbt-locked-font-ui);
-	font-size: 15px;
-	font-weight: 700;
-	line-height: 1.2;
-	letter-spacing: .08em;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+	transform: translate(-50%, -50%);
+}
+
+.tbt-access.tbt-locked .tbt-locked__label {
+	font-family: var(--tbt-access-font-identity);
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: .14em;
 	text-transform: uppercase;
-	text-decoration: none;
-	white-space: nowrap;
-	transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+	color: var(--tbt-access-muted);
 }
 
-.tbt-locked .tbt-locked__button:hover {
-	border-color: var(--tbt-locked-blue-dark);
-	background: var(--tbt-locked-blue-dark);
-	color: #FFFFFF;
+.tbt-access.tbt-locked .tbt-locked__title {
+	overflow-wrap: anywhere;
 }
 
-.tbt-locked .tbt-locked__button--light {
-	border-color: #FFFFFF;
-	background: #FFFFFF;
-	color: var(--tbt-locked-blue);
-}
+/* Offer ------------------------------------------------------------------- */
 
-.tbt-locked .tbt-locked__button--light:hover {
-	border-color: #FFFFFF;
-	background: var(--tbt-selected-bg, #EDF4FF);
-	color: var(--tbt-locked-blue-dark);
-}
-
-.tbt-locked .tbt-locked__button:focus-visible {
-	outline: 3px solid #FFFFFF;
-	outline-offset: 2px;
-	box-shadow: 0 0 0 6px var(--tbt-locked-blue);
-}
-
-/* Course cards (block B) -------------------------------------------------- */
-
-.tbt-locked .tbt-locked__cards {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-	gap: 20px;
-}
-
-.tbt-locked .tbt-locked__card {
+.tbt-access.tbt-locked .tbt-locked__offer {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-	padding: 28px;
-	border: 1px solid var(--tbt-locked-border);
-	border-radius: var(--tbt-radius-panel, 22px);
-	background: var(--tbt-locked-surface);
-	box-shadow: var(--tbt-shadow, 0 6px 20px rgba(24, 56, 96, .07));
+	padding: 20px 22px;
+	border: 1px solid var(--tbt-access-border);
+	border-left: 4px solid var(--tbt-access-blue);
+	border-radius: var(--tbt-access-radius);
+	background: var(--tbt-access-info-bg);
 }
 
-.tbt-locked .tbt-locked__card-title {
-	font-family: var(--tbt-locked-font-content);
+.tbt-access.tbt-locked .tbt-locked__offer-heading {
+	font-family: var(--tbt-access-font-content);
+	font-size: 19px;
 	font-weight: 700;
-	font-size: 22px;
-	line-height: 1.25;
-	color: var(--tbt-locked-blue);
+	line-height: 1.35;
+	color: var(--tbt-access-ink);
+}
+
+.tbt-access.tbt-locked .tbt-locked__description,
+.tbt-access.tbt-locked .tbt-locked__note {
+	font-size: 15px;
+	line-height: 1.55;
+	color: var(--tbt-access-ink);
+}
+
+.tbt-access.tbt-locked .tbt-locked__note {
+	color: var(--tbt-access-muted);
+}
+
+.tbt-access.tbt-locked .tbt-locked__description a {
+	overflow-wrap: anywhere;
+}
+
+.tbt-access.tbt-locked .tbt-locked__buy {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px 20px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__price {
+	font-family: var(--tbt-access-font-content);
+	font-size: 24px;
+	font-weight: 700;
+	color: var(--tbt-access-ink);
+}
+
+.tbt-access.tbt-locked .tbt-locked__price del {
+	margin-right: 6px;
+	font-size: .7em;
+	opacity: .6;
+}
+
+.tbt-access.tbt-locked .tbt-locked__price ins {
+	text-decoration: none;
+}
+
+/* tbt-access.css makes buttons full-width for forms; here they size to text. */
+.tbt-access.tbt-locked .tbt-locked__button {
+	display: inline-flex;
+	width: auto;
+	min-width: 160px;
+	color: #FFFFFF;
+}
+
+.tbt-access.tbt-locked .tbt-locked__button:hover {
+	border-color: var(--tbt-access-blue-dark);
+	background: var(--tbt-access-blue-dark);
+	color: #FFFFFF;
+}
+
+.tbt-access.tbt-locked .tbt-locked__button:focus-visible {
+	box-shadow: var(--tbt-access-focus);
+	outline: none;
+}
+
+.tbt-access.tbt-locked .tbt-locked__signin {
+	font-size: 15px;
+	color: var(--tbt-access-muted);
+}
+
+/* Course cards (B) -------------------------------------------------------- */
+
+.tbt-access.tbt-locked .tbt-locked__cards {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__card {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 18px 20px;
+	border: 1px solid var(--tbt-access-border);
+	border-radius: var(--tbt-access-radius);
+	background: var(--tbt-access-surface);
+}
+
+.tbt-access.tbt-locked .tbt-locked__card-title {
+	font-family: var(--tbt-access-font-content);
+	font-size: 19px;
+	font-weight: 700;
+	line-height: 1.3;
+	color: var(--tbt-access-blue);
 	text-transform: none;
 }
 
-.tbt-locked .tbt-locked__card .tbt-locked__description {
-	color: var(--tbt-locked-muted);
+.tbt-access.tbt-locked .tbt-locked__card .tbt-locked__description {
+	color: var(--tbt-access-muted);
 }
 
-.tbt-locked .tbt-locked__card-foot {
+.tbt-access.tbt-locked .tbt-locked__card-foot {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
-	gap: 12px;
-	margin-top: auto;
-	padding-top: 8px;
-}
-
-.tbt-locked .tbt-locked__card .tbt-locked__price {
-	font-family: var(--tbt-locked-font-content);
-	font-weight: 700;
-	font-size: 22px;
-	color: var(--tbt-locked-ink);
-}
-
-/* Free lessons (block B) -------------------------------------------------- */
-
-.tbt-locked .tbt-locked__free {
-	display: flex;
-	flex-direction: column;
 	gap: 10px;
-	padding: 24px 28px;
-	border: 1px solid var(--tbt-locked-border);
-	border-radius: var(--tbt-radius-control, 12px);
-	background: var(--tbt-locked-surface);
+	margin-top: 4px;
 }
 
-.tbt-locked .tbt-locked__free-title {
-	font-family: var(--tbt-locked-font-content);
-	font-weight: 700;
-	font-size: 18px;
-	color: var(--tbt-locked-ink);
-	text-transform: none;
+.tbt-access.tbt-locked .tbt-locked__card .tbt-locked__price {
+	font-size: 20px;
 }
 
-.tbt-locked .tbt-locked__free-list {
+/* Free lessons (B) -------------------------------------------------------- */
+
+.tbt-access.tbt-locked .tbt-locked__free {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__free-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--tbt-access-ink);
+}
+
+.tbt-access.tbt-locked .tbt-locked__free-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
 	list-style: none;
 }
 
-.tbt-locked .tbt-locked__free-list a {
-	color: var(--tbt-locked-blue);
-	font-weight: 600;
-	text-decoration: underline;
-}
+/* Narrow screens ---------------------------------------------------------- */
 
-/* Small screens ----------------------------------------------------------- */
-
-@media (max-width: 640px) {
-	.tbt-locked .tbt-locked__panel {
-		padding: 28px 22px;
+@media (max-width: 819px) {
+	.tbt-access.tbt-locked {
+		align-items: flex-start;
 	}
 
-	.tbt-locked .tbt-locked__heading {
-		font-size: 23px;
+	.tbt-access.tbt-locked .tbt-access__hero-title {
+		font-size: 28px;
 	}
 
-	.tbt-locked .tbt-locked__buy .tbt-locked__button {
+	.tbt-access.tbt-locked .tbt-locked__image img {
+		height: 130px;
+	}
+
+	.tbt-access.tbt-locked .tbt-locked__buy .tbt-locked__button {
 		width: 100%;
 	}
-}
-
-/* Inside Divi's content area (0.4.1) ---------------------------------------
-   Divi styles content with ID selectors (#left-area ul, #main-content …),
-   which beat class selectors. :is() with an ID carries ID specificity, so
-   these resets win there and cost nothing elsewhere. */
-
-:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__wrap :is(h2, h3, p, ul, li) {
-	margin: 0;
-	padding: 0;
-}
-
-:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__free-list {
-	list-style: none;
-}
-
-:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__heading,
-:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__panel .tbt-locked__price,
-:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__panel a:not(.tbt-locked__button) {
-	color: #FFFFFF;
-}
-
-:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__button {
-	color: #FFFFFF;
-	text-decoration: none;
-}
-
-:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__button--light {
-	color: var(--tbt-locked-blue);
-}
-
-:is(#left-area, #main-content, .et-l, .entry-content) .tbt-locked .tbt-locked__card-title {
-	color: var(--tbt-locked-blue);
 }
