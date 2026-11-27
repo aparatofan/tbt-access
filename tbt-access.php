@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       TBT Access
- * Description:       One sign-in page and one set of redirects for The Blue Tree, plus prepaid platform access passes. Replaces the theme's legacy login code at runtime.
- * Version:           0.3.0
+ * Description:       One sign-in page and one set of redirects for The Blue Tree, prepaid platform access passes, and course and library access (replaces WooCommerce Memberships). Replaces the theme's legacy login code at runtime.
+ * Version:           0.4.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            TBT
@@ -12,17 +12,24 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TBT_ACCESS_VERSION', '0.3.0' );
+define( 'TBT_ACCESS_VERSION', '0.4.0' );
 define( 'TBT_ACCESS_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBT_ACCESS_URL', plugin_dir_url( __FILE__ ) );
 
 require_once TBT_ACCESS_DIR . 'includes/account-screens.php';
 require_once TBT_ACCESS_DIR . 'includes/signup-guard.php';
 require_once TBT_ACCESS_DIR . 'includes/grants.php';
+require_once TBT_ACCESS_DIR . 'includes/courses.php';
+require_once TBT_ACCESS_DIR . 'includes/restrict.php';
+require_once TBT_ACCESS_DIR . 'includes/migrate.php';
 
 // Daily reminder event (includes/grants.php). Also self-healed on init,
 // because an FTP deploy never runs the activation hook.
 register_activation_hook( __FILE__, 'tbt_access_schedule_daily' );
+
+// 0.4.0 upgrade (seed the course registry, enforcement off). Also run on
+// every init (includes/courses.php), for the same FTP-deploy reason.
+register_activation_hook( __FILE__, 'tbt_access_courses_upgrade' );
 register_deactivation_hook( __FILE__, 'tbt_access_unschedule_daily' );
 
 /*
@@ -40,12 +47,16 @@ register_deactivation_hook( __FILE__, 'tbt_access_unschedule_daily' );
  *   - Platform access passes: a product grants access until a date (or for
  *     life), buying again adds time, reminders go out before the end, and a
  *     pass in the cart requires an account at checkout (includes/grants.php).
+ *   - Courses and the library: a registry of course definitions decides which
+ *     lessons need which grant (includes/courses.php); with enforcement on,
+ *     a locked lesson shows a buy page and lists show locks
+ *     (includes/restrict.php); active Memberships import as grants
+ *     (includes/migrate.php).
  *
  * The theme's functions.php is never edited. Its legacy login code is unhooked
  * at runtime, so deactivating this plugin restores the old behaviour exactly.
  *
- * Not registered with TBT Hub: Hub entries link to an admin screen, and this
- * plugin has none.
+ * Not registered with TBT Hub. Its admin screen is Users → TBT Access courses.
  */
 
 /* -------------------------------------------------------------------------

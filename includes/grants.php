@@ -1,6 +1,6 @@
 <?php
 /**
- * Platform access passes (0.3.0).
+ * Grants engine and platform access passes (0.3.0; extended in 0.4.0).
  *
  * A pass is an ordinary one-off WooCommerce product. Buying it gives access
  * until a date, buying again adds time, and a reminder email goes out before
@@ -13,11 +13,14 @@
  *   T4  Refunds and cancellations.
  *   T5  Reminder emails (daily WP-Cron).
  *   T6  My account line.
- *   T7  Admin: user profile section and Users list column.
+ *   T7  Admin: user profile section (one row per grant key since 0.4.0) and
+ *       Users list column.
  *
  * Storage (no custom tables):
- *   user meta    tbt_access_grants    { key: { until, orders[], updated } }
+ *   user meta    tbt_access_grants    { key: { until, orders[], updated, source? } }
  *                                     until = UTC timestamp, or null = lifetime
+ *                                     source (0.4.0, optional) = who set it by hand:
+ *                                     { type: admin|memberships, by, plan?, time }
  *   user meta    tbt_access_reminded  [ "platform|<until>|7", "platform|<until>|0", … ]
  *   product meta _tbt_access_grant    grant key, e.g. "platform"
  *   product meta _tbt_access_duration "1 months", "12 months", "7 days", "lifetime"
@@ -131,6 +134,19 @@ function tbt_access_grant_keys() {
 }
 
 /**
+ * How a grant key reads in order notes: "platform access", or (0.4.0)
+ * course "Personal Productivity" via the tbt_access_grant_note_label filter.
+ *
+ * @param string $key Grant key.
+ * @return string
+ */
+function tbt_access_grant_note_label( $key ) {
+	$label = strtolower( tbt_access_grant_label( $key ) );
+
+	return (string) apply_filters( 'tbt_access_grant_note_label', $label, (string) $key );
+}
+
+/**
  * Admin label of a grant key.
  *
  * @param string $key Grant key.
@@ -179,6 +195,10 @@ function tbt_access_get_grants( $user_id, $flush = false ) {
 					'orders'  => array_values( array_filter( array_map( 'intval', (array) ( $grant['orders'] ?? array() ) ) ) ),
 					'updated' => (int) ( $grant['updated'] ?? 0 ),
 				);
+
+				if ( isset( $grant['source'] ) && is_array( $grant['source'] ) ) {
+					$out[ $key ]['source'] = $grant['source'];
+				}
 			}
 		}
 	}
@@ -205,6 +225,11 @@ function tbt_access_save_grants( $user_id, array $grants ) {
 	}
 
 	tbt_access_get_grants( $user_id, true );
+
+	// Access decisions cached this request may depend on the old grants.
+	if ( function_exists( 'tbt_access_resolver_flush' ) ) {
+		tbt_access_resolver_flush();
+	}
 }
 
 /**
@@ -338,6 +363,10 @@ function tbt_access_extend( $user_id, $key, $duration, $order_id = 0 ) {
 		'updated' => time(),
 	);
 
+	if ( isset( $current['source'] ) ) {
+		$grants[ $key ]['source'] = $current['source'];
+	}
+
 	tbt_access_save_grants( $user_id, $grants );
 
 	return $until;
@@ -349,9 +378,10 @@ function tbt_access_extend( $user_id, $key, $duration, $order_id = 0 ) {
  * @param int            $user_id User ID.
  * @param string         $key     Grant key.
  * @param int|null|false $until   Timestamp, null = lifetime, false = remove.
+ * @param array|null     $source  Who set it (0.4.0): { type, by, plan? }. Null keeps the stored one.
  * @return void
  */
-function tbt_access_set( $user_id, $key, $until ) {
+function tbt_access_set( $user_id, $key, $until, $source = null ) {
 	try {
 		$user_id = (int) $user_id;
 
@@ -364,11 +394,18 @@ function tbt_access_set( $user_id, $key, $until ) {
 		if ( false === $until ) {
 			unset( $grants[ $key ] );
 		} else {
+			$previous       = $grants[ $key ] ?? array();
 			$grants[ $key ] = array(
 				'until'   => null === $until ? null : (int) $until,
-				'orders'  => $grants[ $key ]['orders'] ?? array(),
+				'orders'  => $previous['orders'] ?? array(),
 				'updated' => time(),
 			);
+
+			if ( is_array( $source ) ) {
+				$grants[ $key ]['source'] = array_merge( $source, array( 'time' => time() ) );
+			} elseif ( isset( $previous['source'] ) ) {
+				$grants[ $key ]['source'] = $previous['source'];
+			}
 		}
 
 		tbt_access_save_grants( $user_id, $grants );
@@ -814,7 +851,7 @@ function tbt_access_apply_order( $order_id ) {
  * @return string
  */
 function tbt_access_applied_note( array $line ) {
-	$label = strtolower( tbt_access_grant_label( $line['key'] ) );
+	$label = tbt_access_grant_note_label( $line['key'] );
 
 	if ( null === $line['until_after'] ) {
 		if ( 'lifetime' !== $line['duration'] && null === $line['until_before'] ) {
@@ -834,11 +871,12 @@ function tbt_access_applied_note( array $line ) {
  * ---------------------------------------------------------------------- */
 
 /**
- * Whether the cart holds a product that grants access.
+ * Whether the cart holds a product that grants access (any key, or one key).
  *
+ * @param string $only_key Limit to this grant key ('' = any).
  * @return bool
  */
-function tbt_access_cart_has_grant() {
+function tbt_access_cart_has_grant( $only_key = '' ) {
 	if ( ! did_action( 'wp_loaded' ) || ! function_exists( 'WC' ) ) {
 		return false;
 	}
@@ -850,7 +888,9 @@ function tbt_access_cart_has_grant() {
 	}
 
 	foreach ( $wc->cart->get_cart() as $item ) {
-		if ( isset( $item['data'] ) && tbt_access_product_grant( $item['data'] ) ) {
+		$grant = isset( $item['data'] ) ? tbt_access_product_grant( $item['data'] ) : null;
+
+		if ( $grant && ( '' === $only_key || $only_key === $grant['key'] ) ) {
 			return true;
 		}
 	}
@@ -899,10 +939,13 @@ function tbt_access_checkout_account_note() {
 		}
 
 		$login = add_query_arg( 'redirect_to', rawurlencode( wc_get_checkout_url() ), tbt_access_account_url() );
+		$text  = tbt_access_cart_has_grant( 'platform' )
+			? 'Dostęp do platformy jest przypisany do konta, dlatego przy tym zamówieniu założymy je dla Ciebie.'
+			: 'Kurs jest przypisany do konta, dlatego przy tym zamówieniu założymy je dla Ciebie.';
 
 		printf(
 			'<p class="tbt-access-checkout-note">%1$s <a href="%2$s">%3$s</a></p>',
-			esc_html( 'Dostęp do platformy jest przypisany do konta, dlatego przy tym zamówieniu założymy je dla Ciebie.' ),
+			esc_html( $text ),
 			esc_url( $login ),
 			esc_html( 'Masz już konto? Zaloguj się.' )
 		);
@@ -968,7 +1011,7 @@ function tbt_access_reverse_order( $order_id ) {
 
 		foreach ( array_reverse( (array) $applied['lines'] ) as $line ) {
 			$key    = (string) ( $line['key'] ?? '' );
-			$label  = strtolower( tbt_access_grant_label( $key ) );
+			$label  = tbt_access_grant_note_label( $key );
 			$parsed = tbt_access_parse_duration( $line['duration'] ?? '' );
 
 			if ( '' === $key || ! $parsed ) {
@@ -1294,6 +1337,9 @@ function tbt_access_enqueue_pass_style() {
 		. 'color:var(--tbt-ink,#1F2937);font-family:var(--tbt-font-ui,"Roboto",sans-serif);font-size:16px;line-height:1.5}'
 		. '.tbt-access-pass--expired{border-left-color:var(--tbt-error,#C62828);background:var(--tbt-error-bg,#FFF1F1)}'
 		. '.tbt-access-pass .tbt-access-pass__link{font-weight:600;color:var(--tbt-blue,#0856C9);text-decoration:underline}'
+		. '.tbt-access-courses{flex-direction:column;align-items:flex-start;gap:8px}'
+		. '.tbt-access-courses .tbt-access-courses__list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}'
+		. '.tbt-access-courses .tbt-access-courses__list li{margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 12px}'
 		. '.tbt-access-checkout-note{margin:0 0 12px;padding:10px 14px;border-radius:var(--tbt-radius-control,12px);'
 		. 'background:var(--tbt-selected-bg,#EDF4FF);color:var(--tbt-ink,#1F2937)}'
 	);
@@ -1354,7 +1400,90 @@ add_action( 'show_user_profile', 'tbt_access_profile_section' );
 add_action( 'edit_user_profile', 'tbt_access_profile_section' );
 
 /**
- * "TBT Access" section on the user profile (administrators only).
+ * Grant keys shown on a profile: every known key, plus any stored key that is
+ * no longer defined (a deleted course), so it can still be seen and removed.
+ *
+ * @param int $user_id User ID.
+ * @return array<string,string> key => label
+ */
+function tbt_access_profile_keys( $user_id ) {
+	$keys = tbt_access_grant_keys();
+
+	foreach ( array_keys( tbt_access_get_grants( (int) $user_id ) ) as $key ) {
+		if ( ! isset( $keys[ $key ] ) ) {
+			/* translators: %s: grant key. */
+			$keys[ $key ] = sprintf( __( '%s (no longer defined)', 'tbt-access' ), $key );
+		}
+	}
+
+	return $keys;
+}
+
+/**
+ * Admin status text of a grant: none / until {date} / lifetime / expired {date}.
+ *
+ * @param int|null|false $until Stored until.
+ * @return string
+ */
+function tbt_access_status_text( $until ) {
+	if ( false === $until ) {
+		return __( 'none', 'tbt-access' );
+	}
+
+	if ( null === $until ) {
+		return __( 'lifetime', 'tbt-access' );
+	}
+
+	$date = tbt_access_iso_date( (int) $until );
+
+	/* translators: %s: date. */
+	return (int) $until > time() ? sprintf( __( 'until %s', 'tbt-access' ), $date ) : sprintf( __( 'expired %s', 'tbt-access' ), $date );
+}
+
+/**
+ * Where a grant came from: order links and/or who set it by hand.
+ *
+ * @param array $grant Normalised grant.
+ * @return string HTML.
+ */
+function tbt_access_grant_source_html( array $grant ) {
+	$parts = array();
+
+	if ( ! empty( $grant['orders'] ) ) {
+		$links = array();
+		foreach ( array_reverse( $grant['orders'] ) as $order_id ) {
+			$order   = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
+			$links[] = $order instanceof WC_Order
+				? sprintf( '<a href="%1$s">#%2$s</a> (%3$s)', esc_url( $order->get_edit_order_url() ), esc_html( $order->get_order_number() ), esc_html( wc_get_order_status_name( $order->get_status() ) ) )
+				: '#' . (int) $order_id;
+		}
+		$parts[] = esc_html__( 'Orders:', 'tbt-access' ) . ' ' . implode( ', ', $links );
+	}
+
+	$source = $grant['source'] ?? null;
+
+	if ( is_array( $source ) ) {
+		$admin = get_userdata( (int) ( $source['by'] ?? 0 ) );
+		$name  = $admin ? $admin->display_name : __( 'unknown', 'tbt-access' );
+		$when  = ! empty( $source['time'] ) ? tbt_access_iso_date( (int) $source['time'] ) : '';
+
+		if ( 'memberships' === ( $source['type'] ?? '' ) ) {
+			$plan    = (int) ( $source['plan'] ?? 0 );
+			$title   = $plan ? get_the_title( $plan ) : '';
+			/* translators: 1: plan name, 2: date. */
+			$parts[] = esc_html( sprintf( __( 'Migrated from Memberships plan %1$s on %2$s', 'tbt-access' ), '' !== $title ? $title : '#' . $plan, $when ) );
+		} else {
+			/* translators: 1: admin name, 2: date. */
+			$parts[] = esc_html( sprintf( __( 'Set by %1$s on %2$s', 'tbt-access' ), $name, $when ) );
+		}
+	}
+
+	return implode( '<br>', $parts );
+}
+
+/**
+ * "TBT Access" section on the user profile (administrators only): one row per
+ * grant key (platform, library, every course).
  *
  * @param WP_User $user User being edited.
  * @return void
@@ -1365,23 +1494,8 @@ function tbt_access_profile_section( $user ) {
 	}
 
 	$user_id  = (int) $user->ID;
-	$until    = tbt_access_grant_until( $user_id, 'platform' );
 	$grants   = tbt_access_get_grants( $user_id );
-	$orders   = isset( $grants['platform'] ) ? $grants['platform']['orders'] : array();
-	$lifetime = null === $until;
-	$date     = is_int( $until ) ? tbt_access_iso_date( $until ) : '';
-
-	if ( false === $until ) {
-		$status = __( 'none', 'tbt-access' );
-	} elseif ( $lifetime ) {
-		$status = __( 'lifetime', 'tbt-access' );
-	} elseif ( $until > time() ) {
-		/* translators: %s: date. */
-		$status = sprintf( __( 'until %s', 'tbt-access' ), $date );
-	} else {
-		/* translators: %s: date. */
-		$status = sprintf( __( 'expired %s', 'tbt-access' ), $date );
-	}
+	$platform = tbt_access_grant_until( $user_id, 'platform' );
 
 	$test_url = wp_nonce_url(
 		add_query_arg(
@@ -1394,66 +1508,56 @@ function tbt_access_profile_section( $user ) {
 		'tbt_access_test_reminder_' . $user_id
 	);
 	?>
-	<h2><?php esc_html_e( 'TBT Access', 'tbt-access' ); ?></h2>
+	<h2 id="tbt-access"><?php esc_html_e( 'TBT Access', 'tbt-access' ); ?></h2>
 	<?php wp_nonce_field( 'tbt_access_profile_' . $user_id, 'tbt_access_profile_nonce' ); ?>
-	<input type="hidden" name="tbt_access_until_was" value="<?php echo esc_attr( $date ); ?>">
-	<table class="form-table" role="presentation">
-		<tr>
-			<th scope="row"><?php esc_html_e( 'Platform access', 'tbt-access' ); ?></th>
-			<td>
-				<p><strong><?php echo esc_html( $status ); ?></strong></p>
-				<p>
-					<label for="tbt_access_until"><?php esc_html_e( 'Access until (inclusive)', 'tbt-access' ); ?></label><br>
-					<input type="date" id="tbt_access_until" name="tbt_access_until" value="<?php echo esc_attr( $date ); ?>" <?php disabled( $lifetime ); ?>>
-				</p>
-				<p>
-					<label><input type="checkbox" id="tbt_access_lifetime" name="tbt_access_lifetime" value="1" <?php checked( $lifetime ); ?>> <?php esc_html_e( 'Lifetime', 'tbt-access' ); ?></label>
-				</p>
-				<?php if ( false !== $until ) : ?>
+	<table class="form-table tbt-access-grants" role="presentation">
+		<?php foreach ( tbt_access_profile_keys( $user_id ) as $key => $label ) : ?>
+			<?php
+			$until    = tbt_access_grant_until( $user_id, $key );
+			$lifetime = null === $until;
+			$date     = is_int( $until ) ? tbt_access_iso_date( $until ) : '';
+			$field    = 'tbt_access[' . $key . ']';
+			$id       = 'tbt_access_' . preg_replace( '/[^a-z0-9_]/', '_', $key );
+			$source   = isset( $grants[ $key ] ) ? tbt_access_grant_source_html( $grants[ $key ] ) : '';
+			?>
+			<tr>
+				<th scope="row"><?php echo esc_html( $label ); ?><br><code style="font-weight:400"><?php echo esc_html( $key ); ?></code></th>
+				<td>
+					<input type="hidden" name="<?php echo esc_attr( $field ); ?>[was]" value="<?php echo esc_attr( $date ); ?>">
+					<p><strong><?php echo esc_html( tbt_access_status_text( $until ) ); ?></strong></p>
 					<p>
-						<label><input type="checkbox" name="tbt_access_remove" value="1"> <?php esc_html_e( 'Remove platform access', 'tbt-access' ); ?></label>
+						<label for="<?php echo esc_attr( $id ); ?>_until"><?php esc_html_e( 'Access until (inclusive)', 'tbt-access' ); ?></label>
+						<input type="date" id="<?php echo esc_attr( $id ); ?>_until" name="<?php echo esc_attr( $field ); ?>[until]" value="<?php echo esc_attr( $date ); ?>" <?php disabled( $lifetime ); ?>>
+						<label style="margin-left:12px"><input type="checkbox" class="tbt-access-lifetime" data-date="<?php echo esc_attr( $id ); ?>_until" name="<?php echo esc_attr( $field ); ?>[lifetime]" value="1" <?php checked( $lifetime ); ?>> <?php esc_html_e( 'Lifetime', 'tbt-access' ); ?></label>
+						<?php if ( false !== $until ) : ?>
+							<label style="margin-left:12px"><input type="checkbox" name="<?php echo esc_attr( $field ); ?>[remove]" value="1"> <?php esc_html_e( 'Remove', 'tbt-access' ); ?></label>
+						<?php endif; ?>
 					</p>
-				<?php endif; ?>
-				<p class="description"><?php esc_html_e( 'Only adds access. Roles and capabilities set by hand are never taken away. To shorten or end a pass, pick an earlier date (yesterday ends it now) or tick Remove.', 'tbt-access' ); ?></p>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php esc_html_e( 'Orders', 'tbt-access' ); ?></th>
-			<td>
-				<?php
-				if ( ! $orders ) {
-					echo '—';
-				} else {
-					$links = array();
-					foreach ( array_reverse( $orders ) as $order_id ) {
-						$order   = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
-						$links[] = $order instanceof WC_Order
-							? sprintf( '<a href="%1$s">#%2$s</a> (%3$s)', esc_url( $order->get_edit_order_url() ), esc_html( $order->get_order_number() ), esc_html( wc_get_order_status_name( $order->get_status() ) ) )
-							: '#' . (int) $order_id;
-					}
-					echo wp_kses_post( implode( ', ', $links ) );
-				}
-				?>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php esc_html_e( 'Reminder', 'tbt-access' ); ?></th>
-			<td>
-				<?php if ( is_int( $until ) ) : ?>
-					<a class="button" href="<?php echo esc_url( $test_url ); ?>"><?php esc_html_e( 'Send reminder now (test)', 'tbt-access' ); ?></a>
-				<?php else : ?>
-					<button type="button" class="button" disabled><?php esc_html_e( 'Send reminder now (test)', 'tbt-access' ); ?></button>
-				<?php endif; ?>
-				<p class="description"><?php esc_html_e( 'Sends the "7 days before" email to this user now. It is not recorded, so the scheduled reminder still goes out.', 'tbt-access' ); ?></p>
-			</td>
-		</tr>
+					<?php if ( '' !== $source ) : ?>
+						<p class="description"><?php echo wp_kses_post( $source ); ?></p>
+					<?php endif; ?>
+					<?php if ( 'platform' === $key ) : ?>
+						<p class="description"><?php esc_html_e( 'Only adds capabilities. Roles and capabilities set by hand are never taken away. To shorten or end access, pick an earlier date (yesterday ends it now) or tick Remove.', 'tbt-access' ); ?></p>
+						<p>
+							<?php if ( is_int( $platform ) ) : ?>
+								<a class="button" href="<?php echo esc_url( $test_url ); ?>"><?php esc_html_e( 'Send reminder now (test)', 'tbt-access' ); ?></a>
+							<?php else : ?>
+								<button type="button" class="button" disabled><?php esc_html_e( 'Send reminder now (test)', 'tbt-access' ); ?></button>
+							<?php endif; ?>
+						</p>
+						<p class="description"><?php esc_html_e( 'Sends the "7 days before" email to this user now. It is not recorded, so the scheduled reminder still goes out.', 'tbt-access' ); ?></p>
+					<?php endif; ?>
+				</td>
+			</tr>
+		<?php endforeach; ?>
 	</table>
 	<script>
 	( function () {
-		var box = document.getElementById( 'tbt_access_lifetime' );
-		var date = document.getElementById( 'tbt_access_until' );
-		if ( ! box || ! date ) { return; }
-		box.addEventListener( 'change', function () { date.disabled = box.checked; } );
+		document.querySelectorAll( '.tbt-access-grants .tbt-access-lifetime' ).forEach( function ( box ) {
+			var date = document.getElementById( box.getAttribute( 'data-date' ) );
+			if ( ! date ) { return; }
+			box.addEventListener( 'change', function () { date.disabled = box.checked; } );
+		} );
 	} )();
 	</script>
 	<?php
@@ -1463,10 +1567,11 @@ add_action( 'personal_options_update', 'tbt_access_profile_save' );
 add_action( 'edit_user_profile_update', 'tbt_access_profile_save' );
 
 /**
- * Save the profile section through tbt_access_set().
+ * Save the profile rows through tbt_access_set().
  *
- * Remove wins over Lifetime, Lifetime wins over the date. An unchanged date
- * keeps the exact stored time; a new date means "through the end of that day".
+ * Per key: Remove wins over Lifetime, Lifetime wins over the date. An
+ * unchanged date keeps the exact stored time; a new date means "through the
+ * end of that day". Every change records "set by {admin} on {date}".
  *
  * @param int $user_id User being saved.
  * @return void
@@ -1485,31 +1590,49 @@ function tbt_access_profile_save( $user_id ) {
 			return;
 		}
 
-		$current = tbt_access_grant_until( $user_id, 'platform' );
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each field is sanitised below.
+		$rows   = isset( $_POST['tbt_access'] ) && is_array( $_POST['tbt_access'] ) ? wp_unslash( $_POST['tbt_access'] ) : array();
+		$known  = tbt_access_profile_keys( $user_id );
+		$source = array(
+			'type' => 'admin',
+			'by'   => get_current_user_id(),
+		);
 
-		if ( ! empty( $_POST['tbt_access_remove'] ) ) {
-			tbt_access_set( $user_id, 'platform', false );
-			return;
-		}
+		foreach ( $rows as $key => $row ) {
+			$key = (string) $key;
 
-		if ( ! empty( $_POST['tbt_access_lifetime'] ) ) {
-			if ( null !== $current ) {
-				tbt_access_set( $user_id, 'platform', null );
+			if ( ! isset( $known[ $key ] ) || ! is_array( $row ) ) {
+				continue;
 			}
-			return;
-		}
 
-		$date = isset( $_POST['tbt_access_until'] ) ? sanitize_text_field( wp_unslash( $_POST['tbt_access_until'] ) ) : '';
-		$was  = isset( $_POST['tbt_access_until_was'] ) ? sanitize_text_field( wp_unslash( $_POST['tbt_access_until_was'] ) ) : '';
+			$current = tbt_access_grant_until( $user_id, $key );
 
-		if ( '' === $date || ( $date === $was && is_int( $current ) ) ) {
-			return; // Nothing new. Use Remove to take access away.
-		}
+			if ( ! empty( $row['remove'] ) ) {
+				if ( false !== $current ) {
+					tbt_access_set( $user_id, $key, false );
+				}
+				continue;
+			}
 
-		$until = tbt_access_end_of_day( $date );
+			if ( ! empty( $row['lifetime'] ) ) {
+				if ( null !== $current ) {
+					tbt_access_set( $user_id, $key, null, $source );
+				}
+				continue;
+			}
 
-		if ( false !== $until ) {
-			tbt_access_set( $user_id, 'platform', $until );
+			$date = sanitize_text_field( (string) ( $row['until'] ?? '' ) );
+			$was  = sanitize_text_field( (string) ( $row['was'] ?? '' ) );
+
+			if ( '' === $date || ( $date === $was && is_int( $current ) ) ) {
+				continue; // Nothing new. Use Remove to take access away.
+			}
+
+			$until = tbt_access_end_of_day( $date );
+
+			if ( false !== $until ) {
+				tbt_access_set( $user_id, $key, $until, $source );
+			}
 		}
 	} catch ( \Throwable $e ) {
 		tbt_access_log( 'saving the profile section failed: ' . $e->getMessage() );
