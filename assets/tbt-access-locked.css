@@ -339,23 +339,73 @@ body.tbt-locked-screen {
 	text-decoration: none;
 }
 
-/* tbt-access.css makes buttons full-width for forms; here they size to text. */
+/* Buttons: prototype pills, on this screen only. tbt-access.css keeps the
+   0.2.0 buttons (full width, 12 px corners) for the sign-in screens. */
 .tbt-access.tbt-locked .tbt-access__button.tbt-locked__button {
 	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	width: auto;
 	height: auto;
-	min-height: 44px;
-	padding: 10px 22px;
+	min-height: 46px;
+	padding: 0 26px;
+	border: 2px solid var(--tbt-access-blue);
+	border-radius: 999px;
+	font-family: var(--tbt-access-font-ui);
+	font-size: 15px;
+	font-weight: 700;
 	line-height: 1.2;
+	letter-spacing: .04em;
+	text-align: center;
+	text-decoration: none;
+	text-transform: uppercase;
+	transition: transform .15s ease, background-color .15s ease, border-color .15s ease;
 }
 
-.tbt-access.tbt-locked .tbt-access__button--primary.tbt-locked__button,
-.tbt-access.tbt-locked .tbt-access__button--primary.tbt-locked__button:hover {
+/* Standard cards (not the featured one): a little smaller. */
+.tbt-access.tbt-locked .tbt-locked__card:not(.tbt-locked__card--featured) .tbt-access__button.tbt-locked__button {
+	min-height: 42px;
+	padding: 0 20px;
+	font-size: 14px;
+}
+
+.tbt-access.tbt-locked .tbt-access__button--primary.tbt-locked__button {
+	border-color: #0856C9;
+	background: #0856C9;
 	color: #FFFFFF;
 }
 
-.tbt-access.tbt-locked .tbt-access__button--secondary.tbt-locked__button:hover {
+.tbt-access.tbt-locked .tbt-access__button--primary.tbt-locked__button:hover {
+	border-color: #063F94;
+	background: #063F94;
+	color: #FFFFFF;
+	transform: translateY(-1px);
+}
+
+/* Secondary: "Odkryj też inne kursy". */
+.tbt-access.tbt-locked .tbt-access__button--secondary.tbt-locked__button {
+	border-color: var(--tbt-access-border);
 	background: #FFFFFF;
+	color: #0856C9;
+}
+
+.tbt-access.tbt-locked .tbt-access__button--secondary.tbt-locked__button:hover {
+	border-color: #0856C9;
+	background: #FFFFFF;
+	color: #0856C9;
+	transform: translateY(-1px);
+}
+
+.tbt-access.tbt-locked .tbt-access__button.tbt-locked__button:focus-visible {
+	box-shadow: none;
+	outline: 3px solid rgba(8, 86, 201, .35);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tbt-access.tbt-locked .tbt-access__button.tbt-locked__button:hover {
+		transform: none;
+	}
 }
 
 .tbt-access.tbt-locked .tbt-locked__signin {
