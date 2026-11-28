@@ -16,6 +16,7 @@ A new locked-lesson screen. Access rules are unchanged. No new keys.
   - **"Chcesz najpierw wypróbować lekcję?"** (A and B): up to 3 lessons, never the current one, each open to the viewer: free-flagged lessons from the lesson's top-level category first (none today), then the **newest posts in category 947** "darmowa lekcja".
   - "Masz już ten kurs? Zaloguj się" for signed-out visitors (A and B).
 - **New texts.** "Oferta w przygotowaniu" is gone everywhere. Contact on the screen is **hi@thebluetree.pl** (a fixed string in the text array, not `admin_email`). All texts stay in one array at the top of `templates/locked.php`.
+- **Buttons on this screen are pills** (as in the prototype): uppercase, bold, blue fill; "Odkryj też inne kursy" cards get the white secondary pill. Scoped to the locked screen; the 0.2.0 sign-in screens keep their buttons.
 - `tbt-tree` (Hub) is enqueued in the head on this screen when Hub has registered it, so the tree never shows unstyled. Fonts add Roboto 300 and Roboto Slab 400.
 - Unchanged: status 200, `noindex`, `nocache_headers()` for signed-in visitors, the excerpt swap in lists, REST and search, the `?tbt_buy=` handler, product pages, cart and checkout. `tbt_access_offer_for()` stays as is.
 
