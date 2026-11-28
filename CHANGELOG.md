@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.3 — 2026-11-28
+
+A new locked-lesson screen. Access rules are unchanged. No new keys.
+
+- **New layout.** The 0.4.2 screen reused the sign-in layout (half-screen blue panel, the lesson squeezed into a narrow column with a cropped, greyed image). Now:
+  - **← Wróć do strony głównej**, then the **TBT header bar** as on `/swipe/` ("HT Header tree"): rounded bar, blue-to-white gradient, "THE BLUE TREE", the course name ("Biblioteka" on B and on a lesson in two courses), one line, and **TBT Hub's animated tree** (`[tbt_tree]`, blooms on load). The plugin draws the bar itself; only the tree comes from Hub. Hub inactive: no tree, texts only.
+  - **1080 px wide**, two columns: the lesson on the left (sticky on desktop), the offer on the right. One column below 860 px; below 700 px the tree sits under the header text.
+  - **The lesson:** the featured image whole, in its own proportions and in colour (portrait images up to 420 px wide), with a "Lekcja w kursie" / "Lekcja z biblioteki" pill; "LEKCJA"; the title as `<h1>`; the post's **manual excerpt** as plain text (no excerpt → no description, never an auto-excerpt).
+- **Offer rules** (`tbt_access_locked_view()`, which the template only renders):
+  - **A, course on sale:** one course → a featured card ("Ta lekcja jest częścią kursu", name, description, note, price, **Zobacz program kursu** → the product page). Two or more courses → a short lead and one card per course. Below, **"Odkryj też inne kursy"** with the other courses on sale (secondary button).
+  - **B, library:** "Zacznij od kursu." and a card per course on sale. A viewer who already holds every course sees "Ta lekcja należy do biblioteki The Blue Tree." and the teacher line instead.
+  - **C, course assigned by a teacher:** one card with the text, the contact e-mail and **Zaloguj się** for guests. No other blocks.
+  - **A course the viewer already holds is never offered** (A's other courses and B).
+  - **"Chcesz najpierw wypróbować lekcję?"** (A and B): up to 3 lessons, never the current one, each open to the viewer: free-flagged lessons from the lesson's top-level category first (none today), then the **newest posts in category 947** "darmowa lekcja".
+  - "Masz już ten kurs? Zaloguj się" for signed-out visitors (A and B).
+- **New texts.** "Oferta w przygotowaniu" is gone everywhere. Contact on the screen is **hi@thebluetree.pl** (a fixed string in the text array, not `admin_email`). All texts stay in one array at the top of `templates/locked.php`.
+- `tbt-tree` (Hub) is enqueued in the head on this screen when Hub has registered it, so the tree never shows unstyled. Fonts add Roboto 300 and Roboto Slab 400.
+- Unchanged: status 200, `noindex`, `nocache_headers()` for signed-in visitors, the excerpt swap in lists, REST and search, the `?tbt_buy=` handler, product pages, cart and checkout. `tbt_access_offer_for()` stays as is.
+
+After deploy: no cache purge needed (LH.pl, no LiteSpeed page cache).
+
 ## 0.4.2 — 2026-11-27
 
 The locked page is reworked as its own screen. Access rules are unchanged. No new keys.

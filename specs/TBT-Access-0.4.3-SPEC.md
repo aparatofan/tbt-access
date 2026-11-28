@@ -28,6 +28,20 @@ The 0.4.2 locked screen reuses the sign-in layout: a blue panel fills half the s
 
 ---
 
+## Phase 0 — results (28 Nov 2026) — DONE
+
+Run by CC (0.1, from Hub 1.6.0 code) and Mariusz (0.2–0.4, phpMyAdmin). Decisions are already applied to the tasks below.
+
+- **0.1** `tbt_hub_tree_shortcode()` exists. Hub registers `tbt-tree` on every page at `wp_enqueue_scripts` priority 5, no condition; its only dependency is `tbt-tokens`. So the locked screen (priority 99) can enqueue it in the head. Enqueue it there, not from the shortcode in the body, or WordPress prints it in the footer and the tree flashes unstyled.
+- **0.2a** **No** published post has `_tbt_access_free = 1`. Today's rule would never show the "try" block.
+- **0.2b** Category 947 "darmowa lekcja" holds **12** published posts, each **only** in 947 (no course, no library category), none free-flagged, so all are open to everyone. Newest: 367518 "Secrets of Learning Languages with Lydia Machova" (2026-05-27), 363262 "Be respectful to your coworkers", 363166 "How to talk about stress".
+- **0.2c** Skipped (all zero after 0.2a).
+- **0.3** **0 posts** in both 669 and 870. The two-card A layout stays supported but shows nowhere today.
+- **0.4** Manual excerpts: 669 → 83/83, 870 → 43/44, 1738 → 32/32, 497 → 182/186, 498 → 174/174, 507 → 17/17, 668 → 207/207, library (all) → 612/616. The few without one simply show no description. Excerpts are in English today (e.g. Black Box Thinking); Mariusz may rewrite them in Polish later (content work, out of scope).
+- **Decision 0.2 (Mariusz):** the "try" block shows the **3 newest lessons from category 947** (rule in T3).
+
+---
+
 ## Phase 0 — read-only checks, then stop and report
 
 No code until Mariusz and Claude have read the report. CC writes the SQL; Mariusz runs it in phpMyAdmin.
@@ -119,10 +133,11 @@ Grid `minmax(0,1.1fr) minmax(0,1fr)`, gap 26 px 40 px; left column `position: st
 
 **C — exclusive:** a featured card: `card_kicker` · course name · `excl_text` (with `{kontakt}` link) · button `excl_button` → `wp_login_url( permalink )` for guests only. No "try" block, no sign-in line, no "more".
 
-**"Chcesz najpierw wypróbować lekcję?"** (A and B): `try_heading`, `try_text`, then the lessons in one line, separated by ` · `, each a link to the lesson. Source:
-1. `tbt_access_free_lessons( [ top-level category of the post ], 3, $post->ID )` (as 0.4.2);
-2. **fallback, only if Mariusz chooses it in Phase 0.2:** up to 3 published posts from category 947, oldest first.
+**"Chcesz najpierw wypróbować lekcję?"** (A and B): `try_heading`, `try_text`, then the lessons in one line, separated by ` · `, each a link to the lesson. Source (decision 0.2), up to 3 lessons in total, never the current post, each one **open for the current viewer** (`tbt_access_can_view()` true):
+1. first, free-flagged lessons from the post's top-level category (`tbt_access_free_lessons()`, as 0.4.2; none exist today);
+2. then fill up to 3 with the **newest** published posts in category **947** (`post_date DESC`, category 947 with subcategories), skipping any already listed.
 
+Query a few more than needed (e.g. 6) from 947, then drop locked ones, so a locked post added to 947 later never blocks the list.
 Empty → the whole block is omitted.
 
 **Sign-in line** (guests, A and B): `signin_question` + link `signin_link` → `wp_login_url( permalink )`.
@@ -187,7 +202,7 @@ Bump `TBT_ACCESS_VERSION` and the header to `0.4.3`. CHANGELOG entry: new screen
 Test account `hi@` with **no grants** unless stated. Desktop ≥ 1280 px and phone (≈ 390 px).
 
 - [ ] **Signed out**, `/black-box-thinking/` (Personal Productivity): header bar "Personal Productivity" with the tree blooming; image whole and in colour with "Lekcja w kursie"; title; excerpt; featured card with kicker, description, note, price and **Zobacz program kursu** → the PP product page; sign-in line; "Odkryj też inne kursy" with Man and Society (secondary button).
-- [ ] Same lesson: "Chcesz najpierw wypróbować lekcję?" shows up to 3 lessons per the Phase 0.2 decision, or is absent if there are none.
+- [ ] Same lesson: "Chcesz najpierw wypróbować lekcję?" lists the 3 newest lessons from category 947 (today: Secrets of Learning Languages with Lydia Machova · Be respectful to your coworkers · How to talk about stress); each opens the full lesson signed out.
 - [ ] Signed out, a library lesson outside both courses: "Biblioteka" / "Ponad 600 lekcji angielskiego.", pill "Lekcja z biblioteki", "Zacznij od kursu." + two cards. **"Oferta w przygotowaniu" appears nowhere.**
 - [ ] Signed out, a Persuasive Presentations lesson: variant C card with hi@thebluetree.pl and **Zaloguj się**; no try block, no other courses.
 - [ ] Give `hi@` **Man and Society**: on a PP lesson, "Odkryj też inne kursy" disappears; on a library lesson only the PP card remains.
