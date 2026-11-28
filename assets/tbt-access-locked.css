@@ -41,6 +41,17 @@ body.tbt-locked-screen {
 	padding: 0;
 }
 
+/* Divi's global heading style (uppercase, spaced) must not reach this
+   screen: every heading is sentence case. Colour, size and font are set per
+   heading below. */
+.tbt-access.tbt-locked h1,
+.tbt-access.tbt-locked h2,
+.tbt-access.tbt-locked h3,
+.tbt-access.tbt-locked h4 {
+	letter-spacing: normal;
+	text-transform: none;
+}
+
 .tbt-access.tbt-locked a:focus-visible {
 	outline: 3px solid rgba(8, 86, 201, .35);
 	outline-offset: 2px;
@@ -217,6 +228,7 @@ body.tbt-locked-screen {
 	text-transform: none;
 	text-wrap: balance;
 	overflow-wrap: anywhere;
+	letter-spacing: normal;
 }
 
 .tbt-access.tbt-locked .tbt-locked__excerpt {
@@ -261,7 +273,9 @@ body.tbt-locked-screen {
 	font-size: 21px;
 	font-weight: 700;
 	line-height: 1.3;
+	letter-spacing: normal;
 	color: var(--tbt-access-ink);
+	text-transform: none;
 }
 
 .tbt-access.tbt-locked .tbt-locked__card--featured {
@@ -283,6 +297,7 @@ body.tbt-locked-screen {
 	color: var(--tbt-access-ink);
 	text-transform: none;
 	overflow-wrap: anywhere;
+	letter-spacing: normal;
 }
 
 .tbt-access.tbt-locked .tbt-locked__card--featured .tbt-locked__card-title {
@@ -430,6 +445,7 @@ body.tbt-locked-screen {
 	line-height: 1.3;
 	color: var(--tbt-access-ink);
 	text-transform: none;
+	letter-spacing: normal;
 }
 
 .tbt-access.tbt-locked .tbt-locked__section-text,
