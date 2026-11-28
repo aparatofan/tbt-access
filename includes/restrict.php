@@ -1,6 +1,6 @@
 <?php
 /**
- * Content restriction (0.4.0; reworked in 0.4.1 and 0.4.2).
+ * Content restriction (0.4.0; reworked in 0.4.1, 0.4.2 and 0.4.3).
  *
  *   T3  Enforcement: a locked lesson shows a standalone full-page locked
  *       screen (noindex), without the theme's templates; everywhere else a
@@ -90,11 +90,12 @@ function tbt_access_safe_excerpt( WP_Post $post ) {
 }
 
 /* -------------------------------------------------------------------------
- * T3 — Locked content (0.4.2)
+ * T3 — Locked content (0.4.2; screen redesigned in 0.4.3)
  *
  *   - The lesson being viewed: a standalone full-page screen
- *     (templates/locked.php) in the 0.2.0 sign-in layout, with its own
- *     <html>, wp_head() and wp_footer(). No theme template runs, so none of
+ *     (templates/locked.php): TBT header bar, the lesson on the left, the
+ *     offer from tbt_access_locked_view() on the right. Its own <html>,
+ *     wp_head() and wp_footer(). No theme template runs, so none of
  *     Divi's Theme Builder header, footer or post layout (site menu, lesson
  *     nav, "THE END OF THE LESSON") appears.
  *   - Everywhere else a locked post's content is printed (archives, Divi
@@ -171,6 +172,7 @@ function tbt_access_render_locked_screen( WP_Post $post ) {
 
 	$tbt_locked_post  = $post;
 	$tbt_locked_offer = $offer;
+	$tbt_locked_view  = tbt_access_locked_view( $post, get_current_user_id() );
 
 	include TBT_ACCESS_DIR . 'templates/locked.php';
 }
@@ -194,15 +196,21 @@ function tbt_access_locked_body_class( $classes ) {
 }
 
 /**
- * Styles of the locked screen: the 0.2.0 screen styles (panel, hero, tree,
- * buttons) plus the locked-screen additions, and the fonts they use.
+ * Styles of the locked screen (0.4.3): fonts, the 0.2.0 tokens, links and
+ * buttons (tbt-access.css), the locked-screen layout, and TBT Hub's tree
+ * when Hub is active.
+ *
+ * Hub registers `tbt-tree` on wp_enqueue_scripts priority 5 (Phase 0.1);
+ * enqueuing it here puts it in the <head>. Left to the shortcode in the
+ * body, WordPress would print it in the footer and the tree would flash
+ * unstyled.
  *
  * @return void
  */
 function tbt_access_enqueue_locked_assets() {
 	wp_enqueue_style(
 		'tbt-access-locked-fonts',
-		'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&family=Roboto+Slab:wght@700&display=swap',
+		'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Roboto+Mono:wght@500;700&family=Roboto+Slab:wght@400;700&display=swap',
 		array(),
 		null // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- Google Fonts URL must stay exact.
 	);
@@ -211,6 +219,199 @@ function tbt_access_enqueue_locked_assets() {
 
 	wp_enqueue_style( 'tbt-access-screens', TBT_ACCESS_URL . 'assets/tbt-access.css', $deps, tbt_access_asset_version( 'assets/tbt-access.css' ) );
 	wp_enqueue_style( 'tbt-access-locked', TBT_ACCESS_URL . 'assets/tbt-access-locked.css', array( 'tbt-access-screens' ), tbt_access_asset_version( 'assets/tbt-access-locked.css' ) );
+
+	if ( wp_style_is( 'tbt-tree', 'registered' ) ) {
+		wp_enqueue_style( 'tbt-tree' );
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * T1 (0.4.3) — What the locked screen shows
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Courses on sale, in registry order: non-exclusive, with a published
+ * product that WooCommerce can load. Keyed by course key.
+ *
+ * @return array<string,WC_Product>
+ */
+function tbt_access_sale_courses() {
+	$sale = array();
+
+	if ( ! function_exists( 'wc_get_product' ) ) {
+		return $sale;
+	}
+
+	foreach ( tbt_access_courses() as $key => $course ) {
+		if ( $course['exclusive'] ) {
+			continue;
+		}
+
+		$product_id = tbt_access_course_product( $key );
+		$product    = $product_id ? wc_get_product( $product_id ) : null;
+
+		if ( $product instanceof WC_Product ) {
+			$sale[ $key ] = $product;
+		}
+	}
+
+	return $sale;
+}
+
+/**
+ * The view model of the locked screen. templates/locked.php renders only
+ * what this returns.
+ *
+ *   variant  'sale' | 'none' | 'exclusive'
+ *   course   exclusive course (C), or the single sale course (A); else null
+ *   main     A: sale-course keys the post belongs to (registry order)
+ *   more     A: other sale courses, minus main, minus held
+ *   cards    B: sale courses minus held
+ *   free     up to 3 lesson IDs for "Chcesz najpierw wypróbować lekcję?"; empty on C
+ *   products course key => WC_Product, for every key in main, more and cards
+ *
+ * Never throws: on error, logs and returns variant none with no cards (the
+ * screen still renders and still hides the lesson).
+ *
+ * @param WP_Post $post    The locked lesson.
+ * @param int     $user_id Viewer (0 = signed out).
+ * @return array
+ */
+function tbt_access_locked_view( WP_Post $post, int $user_id ): array {
+	$view = array(
+		'variant'  => 'none',
+		'course'   => null,
+		'main'     => array(),
+		'more'     => array(),
+		'cards'    => array(),
+		'free'     => array(),
+		'products' => array(),
+	);
+
+	try {
+		$courses = tbt_access_post_courses( (int) $post->ID );
+
+		// 1. An exclusive course wins (0.4.0 priority), first in registry order.
+		foreach ( tbt_access_courses() as $key => $course ) {
+			if ( $course['exclusive'] && in_array( $key, $courses, true ) ) {
+				$view['variant'] = 'exclusive';
+				$view['course']  = $key;
+
+				return $view;
+			}
+		}
+
+		$sale = tbt_access_sale_courses();
+		$held = static function ( $key ) use ( $user_id ) {
+			return $user_id > 0 && tbt_access_has_grant( $user_id, $key );
+		};
+		$main = array_values( array_intersect( array_keys( $sale ), $courses ) );
+
+		if ( $main ) {
+			// 2. Courses on sale that contain the post.
+			$view['variant'] = 'sale';
+			$view['main']    = $main;
+			$view['course']  = 1 === count( $main ) ? $main[0] : null;
+			$view['more']    = array_values(
+				array_filter(
+					array_keys( $sale ),
+					static fn( $key ) => ! in_array( $key, $main, true ) && ! $held( $key )
+				)
+			);
+		} else {
+			// 3. Library, or courses not on sale.
+			$view['cards'] = array_values( array_filter( array_keys( $sale ), static fn( $key ) => ! $held( $key ) ) );
+		}
+
+		foreach ( array_merge( $view['main'], $view['more'], $view['cards'] ) as $key ) {
+			$view['products'][ $key ] = $sale[ $key ];
+		}
+
+		$view['free'] = tbt_access_try_lessons( $post, $user_id );
+	} catch ( \Throwable $e ) {
+		tbt_access_log( 'locked view for post ' . $post->ID . ' failed: ' . $e->getMessage() );
+
+		return array(
+			'variant'  => 'none',
+			'course'   => null,
+			'main'     => array(),
+			'more'     => array(),
+			'cards'    => array(),
+			'free'     => array(),
+			'products' => array(),
+		);
+	}
+
+	return $view;
+}
+
+/**
+ * Lessons for "Chcesz najpierw wypróbować lekcję?" (decision 0.2): up to
+ * $limit, never the current post, each one open for the viewer.
+ *
+ *   1. free-flagged lessons from the post's top-level category (0.4.2);
+ *   2. then the newest published posts in category 947 "darmowa lekcja"
+ *      (subcategories included), skipping any already listed.
+ *
+ * Twice as many are read from 947 as needed, so a locked post filed there
+ * later never empties the list.
+ *
+ * @param WP_Post $post    The locked lesson.
+ * @param int     $user_id Viewer (0 = signed out).
+ * @param int     $limit   Maximum.
+ * @return int[]
+ */
+function tbt_access_try_lessons( WP_Post $post, int $user_id, int $limit = 3 ): array {
+	$candidates = array();
+	$cats       = wp_get_post_categories( $post->ID );
+
+	if ( $cats ) {
+		$chain      = get_ancestors( (int) $cats[0], 'category', 'taxonomy' );
+		$top        = $chain ? (int) end( $chain ) : (int) $cats[0];
+		$candidates = tbt_access_free_lessons( array( $top ), $limit, $post->ID );
+	}
+
+	$try_cat = (int) apply_filters( 'tbt_access_try_category', 947 );
+
+	if ( $try_cat > 0 && count( $candidates ) < $limit ) {
+		$newest = get_posts(
+			array(
+				'post_type'        => 'post',
+				'post_status'      => 'publish',
+				'fields'           => 'ids',
+				'numberposts'      => $limit * 2,
+				'post__not_in'     => array_merge( array( (int) $post->ID ), $candidates ),
+				'orderby'          => 'date',
+				'order'            => 'DESC',
+				'tax_query'        => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+					array(
+						'taxonomy'         => 'category',
+						'field'            => 'term_id',
+						'terms'            => array( $try_cat ),
+						'include_children' => true,
+					),
+				),
+				'suppress_filters' => true,
+				'no_found_rows'    => true,
+			)
+		);
+
+		$candidates = array_merge( $candidates, array_map( 'intval', (array) $newest ) );
+	}
+
+	$out = array();
+
+	foreach ( array_unique( $candidates ) as $id ) {
+		if ( $id !== (int) $post->ID && tbt_access_can_view( $user_id, $id ) ) {
+			$out[] = $id;
+		}
+
+		if ( count( $out ) >= $limit ) {
+			break;
+		}
+	}
+
+	return $out;
 }
 
 add_filter( 'the_content', 'tbt_access_filter_content', 999999 );

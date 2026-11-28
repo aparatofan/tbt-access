@@ -1,54 +1,150 @@
 /* ==========================================================================
-   TBT Access — locked screen (0.4.2). Loaded only on that screen, after
-   tbt-access.css (the 0.2.0 sign-in screens: panel, hero, tree, links,
-   buttons), which it extends.
+   TBT Access — locked screen (0.4.3). Loaded only on that screen, after
+   tbt-access.css (tokens, links, buttons) and, when TBT Hub is active,
+   Hub's tbt-tree.css (the tree mark and its bloom).
+
+   Layout: "← Wróć" link, the TBT header bar (as .tbt-header-row on /swipe/),
+   then two columns, lesson left and offer right, 1080 px wide. One column
+   below 860 px.
 
    The screen is a standalone page (no theme template), but wp_head() still
-   loads the theme's styles, so everything here is scoped under .tbt-locked
-   with class-on-class selectors, as in tbt-access.css.
+   loads the theme's styles, so everything is scoped under .tbt-access.tbt-locked
+   with class-on-class selectors.
    ========================================================================== */
 
 body.tbt-locked-screen {
 	margin: 0;
 	padding: 0;
-	background: var(--tbt-canvas, #F6F8FC);
+	background: #FFFFFF;
+	overflow-x: clip;
 }
 
-/* Centre the panel on the canvas. */
 .tbt-access.tbt-locked {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-	min-height: 100dvh;
+	padding: 0;
+	background: #FFFFFF;
+	color: var(--tbt-access-ink);
 }
 
-.tbt-access.tbt-locked .tbt-access__panel {
-	width: 100%;
+.tbt-access.tbt-locked * {
+	min-width: 0;
 }
 
-/* Course names can be long: a calmer hero title than "Logowanie". */
-.tbt-access.tbt-locked .tbt-access__hero-title {
-	font-size: 36px;
-	overflow-wrap: anywhere;
-}
-
-.tbt-access.tbt-locked .tbt-locked__column h2,
-.tbt-access.tbt-locked .tbt-locked__column h3,
-.tbt-access.tbt-locked .tbt-locked__column p,
-.tbt-access.tbt-locked .tbt-locked__column ul,
-.tbt-access.tbt-locked .tbt-locked__column li {
+/* Divi pads headings, paragraphs and lists; this screen sets its own rhythm. */
+.tbt-access.tbt-locked h1,
+.tbt-access.tbt-locked h2,
+.tbt-access.tbt-locked h3,
+.tbt-access.tbt-locked h4,
+.tbt-access.tbt-locked p,
+.tbt-access.tbt-locked ul,
+.tbt-access.tbt-locked li {
 	margin: 0;
 	padding: 0;
 }
 
-.tbt-access.tbt-locked .tbt-locked__column {
+.tbt-access.tbt-locked a:focus-visible {
+	outline: 3px solid rgba(8, 86, 201, .35);
+	outline-offset: 2px;
+}
+
+/* Top: back link and header bar ------------------------------------------ */
+
+.tbt-access.tbt-locked .tbt-locked__top {
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 22px 0 0;
+}
+
+.tbt-access.tbt-locked a.tbt-locked__back {
+	min-height: 36px;
+	margin-bottom: 10px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__bar {
+	display: flex;
+	align-items: stretch;
+	overflow: hidden;
+	min-height: 220px;
+	padding: 32px 42px;
+	border-radius: 20px;
+	background: linear-gradient(90deg, #0856C9 0%, #0856C9 40%, #6F9EE2 72%, #DCE8F8 88%, #FFFFFF 100%);
+}
+
+.tbt-access.tbt-locked .tbt-locked__bar-text {
+	display: flex;
+	flex: 3 1 0;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.tbt-access.tbt-locked .tbt-locked__eyebrow {
+	margin-bottom: 16px;
+	font-family: var(--tbt-access-font-ui);
+	font-size: 14px;
+	font-weight: 300;
+	line-height: 1.2;
+	letter-spacing: .2em;
+	text-transform: uppercase;
+	color: #CECECE;
+}
+
+.tbt-access.tbt-locked .tbt-locked__bar-title {
+	margin-bottom: 12px;
+	font-family: var(--tbt-access-font-identity);
+	font-size: clamp(30px, 3.6vw, 44px);
+	font-weight: 700;
+	line-height: 1.25;
+	letter-spacing: .035em;
+	color: #FFFFFF;
+	overflow-wrap: anywhere;
+}
+
+.tbt-access.tbt-locked .tbt-locked__bar-line {
+	max-width: 46ch;
+	font-family: var(--tbt-access-font-content);
+	font-size: 18px;
+	font-weight: 400;
+	line-height: 1.5;
+	color: #CECECE;
+}
+
+.tbt-access.tbt-locked .tbt-locked__bar-tree {
+	display: flex;
+	flex: 2 1 0;
+	flex-direction: column;
+	justify-content: flex-end;
+	margin: -16px 0 -34px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__bar-tree .tbt-tree-host {
+	display: block;
+	max-width: calc(100% - 24px);
+	margin-left: auto;
+	margin-right: 16px;
+}
+
+/* Content: two columns --------------------------------------------------- */
+
+.tbt-access.tbt-locked .tbt-locked__main {
+	display: grid;
+	grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+	gap: 26px 40px;
+	align-items: start;
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 36px 0 64px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__side {
+	display: flex;
+	flex-direction: column;
 	gap: 22px;
 }
 
-/* Lesson ------------------------------------------------------------------ */
+/* Lesson (left) ---------------------------------------------------------- */
 
 .tbt-access.tbt-locked .tbt-locked__lesson {
+	position: sticky;
+	top: 24px;
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
@@ -57,35 +153,50 @@ body.tbt-locked-screen {
 .tbt-access.tbt-locked .tbt-locked__image {
 	position: relative;
 	overflow: hidden;
-	margin-bottom: 10px;
+	align-self: center;
+	width: 100%;
+	max-width: 100%;
+	margin-bottom: 12px;
 	border: 1px solid var(--tbt-access-border);
-	border-radius: var(--tbt-access-radius);
+	border-radius: 14px;
 	background: var(--tbt-access-input);
+}
+
+.tbt-access.tbt-locked .tbt-locked__image--portrait {
+	width: min(420px, 100%);
 }
 
 .tbt-access.tbt-locked .tbt-locked__image img {
 	display: block;
 	width: 100%;
-	height: 160px;
-	object-fit: cover;
-	filter: saturate(.3);
-	opacity: .7;
+	max-width: 100%;
+	height: auto;
+	margin: 0;
+	border: 0;
 }
 
-.tbt-access.tbt-locked .tbt-locked__lock {
+.tbt-access.tbt-locked .tbt-locked__pill {
 	position: absolute;
-	top: 50%;
-	left: 50%;
-	display: flex;
+	top: 12px;
+	left: 12px;
+	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	width: 52px;
-	height: 52px;
+	gap: 6px;
+	padding: 6px 11px 6px 9px;
 	border-radius: 999px;
-	background: var(--tbt-access-ink);
+	background: rgba(31, 41, 55, .88);
 	color: #FFFFFF;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
-	transform: translate(-50%, -50%);
+	font-family: var(--tbt-access-font-ui);
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1.3;
+	white-space: nowrap;
+}
+
+.tbt-access.tbt-locked .tbt-locked__pill svg {
+	flex: none;
+	width: 14px;
+	height: 14px;
 }
 
 .tbt-access.tbt-locked .tbt-locked__label {
@@ -98,57 +209,124 @@ body.tbt-locked-screen {
 }
 
 .tbt-access.tbt-locked .tbt-locked__title {
+	font-family: var(--tbt-access-font-content);
+	font-size: clamp(26px, 3.4vw, 32px);
+	font-weight: 700;
+	line-height: 1.2;
+	color: var(--tbt-access-ink);
+	text-transform: none;
+	text-wrap: balance;
 	overflow-wrap: anywhere;
 }
 
-/* Offer ------------------------------------------------------------------- */
+.tbt-access.tbt-locked .tbt-locked__excerpt {
+	margin-top: 10px;
+	font-family: var(--tbt-access-font-content);
+	font-size: 17px;
+	font-weight: 400;
+	line-height: 1.6;
+	color: var(--tbt-access-ink);
+}
 
-.tbt-access.tbt-locked .tbt-locked__offer {
+/* Offer (right) ---------------------------------------------------------- */
+
+.tbt-access.tbt-locked .tbt-locked__lead {
+	font-weight: 500;
+}
+
+.tbt-access.tbt-locked .tbt-locked__cards {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 14px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__box,
+.tbt-access.tbt-locked .tbt-locked__card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
 	padding: 20px 22px;
 	border: 1px solid var(--tbt-access-border);
-	border-left: 4px solid var(--tbt-access-blue);
-	border-radius: var(--tbt-access-radius);
-	background: var(--tbt-access-info-bg);
+	border-radius: 14px;
+	background: var(--tbt-access-surface);
 }
 
-.tbt-access.tbt-locked .tbt-locked__offer-heading {
+.tbt-access.tbt-locked .tbt-locked__box {
+	gap: 12px;
+	padding: 22px 24px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__box-heading {
 	font-family: var(--tbt-access-font-content);
-	font-size: 19px;
+	font-size: 21px;
 	font-weight: 700;
-	line-height: 1.35;
+	line-height: 1.3;
 	color: var(--tbt-access-ink);
 }
 
-.tbt-access.tbt-locked .tbt-locked__description,
-.tbt-access.tbt-locked .tbt-locked__note {
-	font-size: 15px;
-	line-height: 1.55;
-	color: var(--tbt-access-ink);
+.tbt-access.tbt-locked .tbt-locked__card--featured {
+	padding: 24px 26px;
+	border: 2px solid var(--tbt-access-blue);
+	box-shadow: 0 6px 20px rgba(24, 56, 96, .07);
 }
 
-.tbt-access.tbt-locked .tbt-locked__note {
+.tbt-access.tbt-locked .tbt-locked__kicker {
+	font-size: 14px;
 	color: var(--tbt-access-muted);
 }
 
-.tbt-access.tbt-locked .tbt-locked__description a {
+.tbt-access.tbt-locked .tbt-locked__card-title {
+	font-family: var(--tbt-access-font-content);
+	font-size: 18px;
+	font-weight: 700;
+	line-height: 1.3;
+	color: var(--tbt-access-ink);
+	text-transform: none;
 	overflow-wrap: anywhere;
 }
 
-.tbt-access.tbt-locked .tbt-locked__buy {
+.tbt-access.tbt-locked .tbt-locked__card--featured .tbt-locked__card-title {
+	font-size: 24px;
+}
+
+.tbt-access.tbt-locked .tbt-locked__card-text {
+	font-size: 15px;
+	line-height: 1.55;
+	color: var(--tbt-access-muted);
+}
+
+.tbt-access.tbt-locked .tbt-locked__card--featured .tbt-locked__card-text {
+	font-size: 16px;
+	color: var(--tbt-access-ink);
+}
+
+.tbt-access.tbt-locked .tbt-locked__card-text a,
+.tbt-access.tbt-locked .tbt-locked__box a {
+	font-size: inherit;
+	overflow-wrap: anywhere;
+}
+
+.tbt-access.tbt-locked .tbt-locked__note {
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--tbt-access-muted);
+}
+
+.tbt-access.tbt-locked .tbt-locked__card-foot {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 12px 20px;
+	justify-content: space-between;
+	gap: 14px 18px;
+	margin-top: 4px;
 }
 
 .tbt-access.tbt-locked .tbt-locked__price {
-	font-family: var(--tbt-access-font-content);
-	font-size: 24px;
+	font-family: var(--tbt-access-font-ui);
+	font-size: 22px;
 	font-weight: 700;
 	color: var(--tbt-access-ink);
+	white-space: nowrap;
 }
 
 .tbt-access.tbt-locked .tbt-locked__price del {
@@ -162,22 +340,22 @@ body.tbt-locked-screen {
 }
 
 /* tbt-access.css makes buttons full-width for forms; here they size to text. */
-.tbt-access.tbt-locked .tbt-locked__button {
+.tbt-access.tbt-locked .tbt-access__button.tbt-locked__button {
 	display: inline-flex;
 	width: auto;
-	min-width: 160px;
+	height: auto;
+	min-height: 44px;
+	padding: 10px 22px;
+	line-height: 1.2;
+}
+
+.tbt-access.tbt-locked .tbt-access__button--primary.tbt-locked__button,
+.tbt-access.tbt-locked .tbt-access__button--primary.tbt-locked__button:hover {
 	color: #FFFFFF;
 }
 
-.tbt-access.tbt-locked .tbt-locked__button:hover {
-	border-color: var(--tbt-access-blue-dark);
-	background: var(--tbt-access-blue-dark);
-	color: #FFFFFF;
-}
-
-.tbt-access.tbt-locked .tbt-locked__button:focus-visible {
-	box-shadow: var(--tbt-access-focus);
-	outline: none;
+.tbt-access.tbt-locked .tbt-access__button--secondary.tbt-locked__button:hover {
+	background: #FFFFFF;
 }
 
 .tbt-access.tbt-locked .tbt-locked__signin {
@@ -185,87 +363,93 @@ body.tbt-locked-screen {
 	color: var(--tbt-access-muted);
 }
 
-/* Course cards (B) -------------------------------------------------------- */
+/* "Chcesz najpierw wypróbować lekcję?" and "Odkryj też inne kursy" --------- */
 
-.tbt-access.tbt-locked .tbt-locked__cards {
-	display: flex;
-	flex-direction: column;
-	gap: 14px;
-}
-
-.tbt-access.tbt-locked .tbt-locked__card {
+.tbt-access.tbt-locked .tbt-locked__section {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	padding: 18px 20px;
-	border: 1px solid var(--tbt-access-border);
-	border-radius: var(--tbt-access-radius);
-	background: var(--tbt-access-surface);
+	padding-top: 18px;
+	border-top: 1px solid var(--tbt-access-border);
 }
 
-.tbt-access.tbt-locked .tbt-locked__card-title {
+.tbt-access.tbt-locked .tbt-locked__section-heading {
 	font-family: var(--tbt-access-font-content);
-	font-size: 19px;
+	font-size: 18px;
 	font-weight: 700;
 	line-height: 1.3;
-	color: var(--tbt-access-blue);
+	color: var(--tbt-access-ink);
 	text-transform: none;
 }
 
-.tbt-access.tbt-locked .tbt-locked__card .tbt-locked__description {
+.tbt-access.tbt-locked .tbt-locked__section-text,
+.tbt-access.tbt-locked .tbt-locked__try-links {
 	color: var(--tbt-access-muted);
 }
 
-.tbt-access.tbt-locked .tbt-locked__card-foot {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: 10px;
+.tbt-access.tbt-locked .tbt-locked__try-links a {
+	font-size: inherit;
+}
+
+.tbt-access.tbt-locked .tbt-locked__more .tbt-locked__cards {
+	gap: 12px;
 	margin-top: 4px;
 }
 
-.tbt-access.tbt-locked .tbt-locked__card .tbt-locked__price {
-	font-size: 20px;
+/* Narrower screens ------------------------------------------------------- */
+
+@media (max-width: 1120px) {
+	.tbt-access.tbt-locked .tbt-locked__top,
+	.tbt-access.tbt-locked .tbt-locked__main {
+		padding-inline: max(4vw, 20px);
+	}
 }
 
-/* Free lessons (B) -------------------------------------------------------- */
-
-.tbt-access.tbt-locked .tbt-locked__free {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.tbt-access.tbt-locked .tbt-locked__free-title {
-	font-size: 14px;
-	font-weight: 600;
-	color: var(--tbt-access-ink);
-}
-
-.tbt-access.tbt-locked .tbt-locked__free-list {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	list-style: none;
-}
-
-/* Narrow screens ---------------------------------------------------------- */
-
-@media (max-width: 819px) {
-	.tbt-access.tbt-locked {
-		align-items: flex-start;
+@media (max-width: 860px) {
+	.tbt-access.tbt-locked .tbt-locked__main {
+		grid-template-columns: minmax(0, 1fr);
 	}
 
-	.tbt-access.tbt-locked .tbt-access__hero-title {
-		font-size: 28px;
+	.tbt-access.tbt-locked .tbt-locked__lesson {
+		position: static;
+	}
+}
+
+@media (max-width: 700px) {
+	.tbt-access.tbt-locked .tbt-locked__bar {
+		flex-direction: column;
+		min-height: 0;
+		padding: 26px 24px 0;
+		background: linear-gradient(180deg, #0856C9 0%, #0856C9 55%, #6F9EE2 80%, #DCE8F8 100%);
 	}
 
-	.tbt-access.tbt-locked .tbt-locked__image img {
-		height: 130px;
+	/* Hub inactive: no tree under the text, so the bar needs its own bottom padding. */
+	.tbt-access.tbt-locked .tbt-locked__bar-text:last-child {
+		padding-bottom: 26px;
 	}
 
-	.tbt-access.tbt-locked .tbt-locked__buy .tbt-locked__button {
-		width: 100%;
+	.tbt-access.tbt-locked .tbt-locked__bar-line {
+		font-size: 16px;
+	}
+
+	.tbt-access.tbt-locked .tbt-locked__bar-tree {
+		margin: 0 0 -14px;
+	}
+
+	.tbt-access.tbt-locked .tbt-locked__bar-tree .tbt-tree-host {
+		width: 150px !important; /* overrides the shortcode's inline width */
+		margin: 4px 0 0 auto;
+	}
+}
+
+@media (max-width: 600px) {
+	.tbt-access.tbt-locked .tbt-locked__main {
+		padding-top: 24px;
+	}
+
+	.tbt-access.tbt-locked .tbt-locked__box,
+	.tbt-access.tbt-locked .tbt-locked__card,
+	.tbt-access.tbt-locked .tbt-locked__card--featured {
+		padding: 18px;
 	}
 }
